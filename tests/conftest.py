@@ -1,4 +1,5 @@
 """Shared pytest fixtures for Aquamedic tests."""
+
 import pytest
 
 

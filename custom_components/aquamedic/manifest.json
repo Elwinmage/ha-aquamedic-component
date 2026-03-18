@@ -1,16 +1,10 @@
 {
   "domain": "aquamedic",
   "name": "Aquamedic",
-  "after_dependencies": [
-    "frontend"
-  ],
-  "codeowners": [
-    "@Elwinmage"
-  ],
+  "after_dependencies": ["frontend"],
+  "codeowners": ["@Elwinmage"],
   "config_flow": true,
-  "dependencies": [
-    "http"
-  ],
+  "dependencies": ["http"],
   "documentation": "https://github.com/Elwinmage/ha-aquamedic-component",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Elwinmage/ha-aquamedic-component/issues",

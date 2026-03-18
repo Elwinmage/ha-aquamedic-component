@@ -1,4 +1,5 @@
 """Basic smoke tests for Aquamedic."""
+
 from custom_components.aquamedic.const import DOMAIN
 
 

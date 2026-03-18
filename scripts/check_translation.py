@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Verify that all entity keys defined in const.py have translations."""
-import json
+
 import os
-import re
 import sys
 
 from colorama import Fore, Style
