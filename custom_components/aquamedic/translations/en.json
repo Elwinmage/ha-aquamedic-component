@@ -2,12 +2,25 @@
   "config": {
     "step": {
       "user": {
-        "title": "Aquamedic",
-        "data": {}
+        "title": "Aqua Medic — Sign in",
+        "description": "Enter your Aqua Medic app credentials (Gizwits account).",
+        "data": {
+          "username": "E-mail address",
+          "password": "Password",
+          "region": "Gizwits server"
+        },
+        "data_description": {
+          "region": "Select the server for your region. For Europe, choose « Europe »."
+        }
       }
     },
+    "error": {
+      "invalid_auth": "Invalid credentials. Check your e-mail and password.",
+      "cannot_connect": "Cannot reach the Gizwits server. Check your network.",
+      "unknown": "An unexpected error occurred."
+    },
     "abort": {
-      "not_implemented": "Not implemented yet."
+      "already_configured": "This account is already configured."
     }
   }
 }

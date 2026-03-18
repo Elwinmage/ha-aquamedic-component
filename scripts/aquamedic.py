@@ -121,6 +121,7 @@ def get_datapoints(session, token, product_key):
         params={"product_key": product_key},
     )
     if res.status_code == 200:
+        print(res.json())
         return res.json()
     warn(f"Datapoints non disponibles ({res.status_code}): {res.text}")
     return None
