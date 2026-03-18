@@ -1,0 +1,3 @@
+# Aquamedic (FR)
+
+> TODO: translate.
