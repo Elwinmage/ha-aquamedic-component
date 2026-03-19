@@ -29,6 +29,18 @@ from custom_components.aquamedic.const import (
 )
 from tests.conftest import MOCK_CONFIG_ENTRY_DATA, MOCK_DID, MOCK_PASSWORD, MOCK_USERNAME
 
+
+# ── Simulator flag fixture ────────────────────────────────────────────────────
+
+@pytest.fixture
+def simulator_flag():
+    """Create the .simulator_enabled flag file for the duration of the test."""
+    from custom_components.aquamedic.config_flow import _SIM_FLAG
+    _SIM_FLAG.touch()
+    yield
+    _SIM_FLAG.unlink(missing_ok=True)
+
+
 # ── Shared input ──────────────────────────────────────────────────────────────
 
 VALID_INPUT = {
@@ -357,7 +369,7 @@ SIM_INPUT_STEP1 = {
 SIM_INPUT_STEP2 = {CONF_SIM_HOST: SIM_HOST}
 
 
-async def test_sim_flow_shows_sim_host_step(hass, register_config_flow):
+async def test_sim_flow_shows_sim_host_step(hass, register_config_flow, simulator_flag):
     """Choosing 'sim' region redirects to the sim_host step."""
     with (
         patch("custom_components.aquamedic.config_flow.AquaMedicClient"),
@@ -374,7 +386,7 @@ async def test_sim_flow_shows_sim_host_step(hass, register_config_flow):
     assert result["step_id"] == "sim_host"
 
 
-async def test_sim_flow_default_host_in_schema(hass, register_config_flow):
+async def test_sim_flow_default_host_in_schema(hass, register_config_flow, simulator_flag):
     """sim_host step shows the default localhost URL."""
     from custom_components.aquamedic.const import SIM_DEFAULT_HOST
     with (
@@ -395,7 +407,7 @@ async def test_sim_flow_default_host_in_schema(hass, register_config_flow):
     assert sim_key.default() == SIM_DEFAULT_HOST
 
 
-async def test_sim_flow_success_creates_entry(hass, register_config_flow):
+async def test_sim_flow_success_creates_entry(hass, register_config_flow, simulator_flag):
     """Full sim flow creates an entry with sim_host stored."""
     with (
         patch("custom_components.aquamedic.config_flow.AquaMedicClient") as MockClient,
@@ -420,7 +432,7 @@ async def test_sim_flow_success_creates_entry(hass, register_config_flow):
     assert "(simulator)" in result["title"]
 
 
-async def test_sim_flow_client_receives_sim_host(hass, register_config_flow):
+async def test_sim_flow_client_receives_sim_host(hass, register_config_flow, simulator_flag):
     """AquaMedicClient is instantiated with sim_host kwarg."""
     with (
         patch("custom_components.aquamedic.config_flow.AquaMedicClient") as MockClient,
@@ -443,7 +455,7 @@ async def test_sim_flow_client_receives_sim_host(hass, register_config_flow):
     assert kwargs.get("sim_host") == SIM_HOST
 
 
-async def test_sim_flow_auth_error_returns_to_sim_host_step(hass, register_config_flow):
+async def test_sim_flow_auth_error_returns_to_sim_host_step(hass, register_config_flow, simulator_flag):
     """Auth error while on sim region re-shows the sim_host step."""
     with (
         patch("custom_components.aquamedic.config_flow.AquaMedicClient") as MockClient,
@@ -468,7 +480,7 @@ async def test_sim_flow_auth_error_returns_to_sim_host_step(hass, register_confi
     assert result["errors"]["base"] == "invalid_auth"
 
 
-async def test_sim_flow_cannot_connect_returns_to_sim_host_step(hass, register_config_flow):
+async def test_sim_flow_cannot_connect_returns_to_sim_host_step(hass, register_config_flow, simulator_flag):
     """Connection error while on sim region re-shows the sim_host step."""
     with (
         patch("custom_components.aquamedic.config_flow.AquaMedicClient") as MockClient,
@@ -529,3 +541,37 @@ def test_client_uses_standard_urls_when_no_sim_host():
     session = MagicMock(spec=aiohttp.ClientSession)
     client = AquaMedicClient(session, "u", "p", region="eu")
     assert client._urls == GIZWITS_API_URLS["eu"]
+
+
+# ── Simulator flag: disabled when file absent ─────────────────────────────────
+
+async def test_sim_region_hidden_when_flag_absent(hass, register_config_flow):
+    """'sim' region must NOT appear in the form when flag file is absent."""
+    from custom_components.aquamedic.config_flow import _SIM_FLAG
+    _SIM_FLAG.unlink(missing_ok=True)   # ensure flag is absent
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] == FlowResultType.FORM
+    schema_keys = {str(k) for k in result["data_schema"].schema}
+    # Extract the region selector options
+    from homeassistant.helpers.selector import SelectSelector
+    region_sel = next(
+        v for k, v in result["data_schema"].schema.items()
+        if str(k) == "region"
+    )
+    option_values = [o["value"] for o in region_sel.config["options"]]
+    assert "sim" not in option_values
+
+
+async def test_sim_step_aborts_when_flag_absent(hass, register_config_flow):
+    """async_step_sim_host must abort when flag file is absent."""
+    from custom_components.aquamedic.config_flow import _SIM_FLAG, AquaMedicConfigFlow
+    _SIM_FLAG.unlink(missing_ok=True)
+
+    flow = AquaMedicConfigFlow()
+    flow.hass = hass
+    result = await flow.async_step_sim_host()
+    assert result["type"] == "abort"
+    assert result["reason"] == "simulator_disabled"

@@ -12,6 +12,7 @@ Options flow:
 from __future__ import annotations
 
 import logging
+import pathlib
 from typing import Any
 
 import voluptuous as vol
@@ -52,6 +53,16 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+# Local file that enables the simulator region in the config flow.
+# Create it to enable, delete it to disable — git-ignored.
+_SIM_FLAG = pathlib.Path(__file__).parent / ".simulator_enabled"
+
+
+def _simulator_enabled() -> bool:
+    """Return True if the local .simulator_enabled flag file exists."""
+    return _SIM_FLAG.exists()
+
+
 def _default_region(hass_language: str) -> str:
     lang = hass_language.lower()
     if lang in LANGUAGE_TO_REGION:
@@ -86,9 +97,11 @@ def _interval_selector() -> NumberSelector:
 
 def _user_schema(default_region: str) -> vol.Schema:
     """Return the vol.Schema for the user step."""
-    region_options = [
-        SelectOptionDict(value=k, label=v) for k, v in GIZWITS_REGIONS.items()
-    ]
+    # Include "sim" only when the local flag file is present
+    regions = {
+        k: v for k, v in GIZWITS_REGIONS.items() if k != "sim" or _simulator_enabled()
+    }
+    region_options = [SelectOptionDict(value=k, label=v) for k, v in regions.items()]
     return vol.Schema(
         {
             vol.Required(CONF_USERNAME): TextSelector(
@@ -157,7 +170,13 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_sim_host(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Step 2 — collect simulator host URL (sim region only)."""
+        """Step 2 — collect simulator host URL (sim region only).
+
+        Only reachable when the local .simulator_enabled flag file
+        exists alongside this module.
+        """
+        if not _simulator_enabled():
+            return self.async_abort(reason="simulator_disabled")
         errors: dict[str, str] = {}
 
         if user_input is not None:
