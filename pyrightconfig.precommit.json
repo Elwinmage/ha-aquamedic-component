@@ -1,6 +1,6 @@
 {
   "include": ["custom_components", "tests"],
-  "exclude": ["**/node_modules", "**/__pycache__"],
+  "exclude": ["**/node_modules", "**/__pycache__", "tests"],
   "extraPaths": ["."],
   "stubPath": "typings",
   "ignore": ["typings/pytest_homeassistant_custom_component/**"],

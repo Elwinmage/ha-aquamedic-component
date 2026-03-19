@@ -41,6 +41,7 @@ repos:
         pass_filenames: false
 
       - id: pyright
+        exclude: ^tests/
         name: pyright
         entry: pyright
         language: python
