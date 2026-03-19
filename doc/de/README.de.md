@@ -14,7 +14,7 @@
 
 # Supported Languages: [<img src="https://flagicons.lipis.dev/flags/4x3/gb.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/README.md) [<img src="https://flagicons.lipis.dev/flags/4x3/fr.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/fr/README.fr.md) [<img src="https://flagicons.lipis.dev/flags/4x3/de.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/de/README.de.md) [<img src="https://flagicons.lipis.dev/flags/4x3/es.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/es/README.es.md) [<img src="https://flagicons.lipis.dev/flags/4x3/it.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/it/README.it.md) [<img src="https://flagicons.lipis.dev/flags/4x3/pl.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/pl/README.pl.md) [<img src="https://flagicons.lipis.dev/flags/4x3/pt.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/pt/README.pt.md)
 
-Steuern Sie Ihre Aqua Medic Strömungspumpen über die Gizwits-Cloud-API mit Home Assistant.
+Steuern Sie Ihre Aqua Medic Pumpen über die Gizwits-Cloud-API mit Home Assistant.
 
 ---
 
@@ -22,64 +22,17 @@ Steuern Sie Ihre Aqua Medic Strömungspumpen über die Gizwits-Cloud-API mit Hom
 
 Ihr Gerät wird nicht unterstützt? Kontaktieren Sie mich.
 
-| Gerät | Interner Name | Produktschlüssel | Unterstützt |
+> ✅ Unterstützt &nbsp;|&nbsp; 🧪 Ungetestet (könnte funktionieren) &nbsp;|&nbsp; ❌ Noch nicht unterstützt
+
+| Gerät | Interner Name | Produktschlüssel | Status |
 |---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
-| Aqua Medic DC Runner (Rückförderpumpe) | `DC_Runner` | `8879684725d14066922374e50889f893` | ❌ |
+| Aqua Medic DC Runner x.1 / x.2 / x.3 (Rückförderpumpe) | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
 | Aqua Medic Reefdoser EVO | `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
 
-Alle diese Geräte verwenden die Gizwits-IoT-Plattform (dasselbe Backend wie die offizielle Aqua Medic App). Die Unterstützung weiterer Geräte kann in zukünftigen Versionen hinzugefügt werden.
-
----
-
-## Entitäten
-
-Jedes SmartDrift / EcoDrift-Gerät stellt folgende Entitäten in Home Assistant bereit.
-
-### Schalter
-
-| Entität | Beschreibung |
-|---|---|
-| **Ein/Aus** | Hauptschalter |
-| **Wellentyp** | Impulsmodus (aus) / Gezeitenmodus (ein) |
-| **Fütterungsmodus** | Aktiviert die Fütterungspause |
-| **Timer** | Aktiviert den Programmmodus |
-| **0-10V-Steuermodus** | Wenn aktiv, wird der Durchflussregler deaktiviert (Pumpe wird durch externes 0-10V-Signal gesteuert) |
-
-### Auswahllisten
-
-| Entität | Optionen |
-|---|---|
-| **Wellenmodus** | Klassische Welle · Sinuswelle · Zufallswelle · Konstantfluss |
-| **Kopplung** | Unabhängig · Master · Slave |
-
-### Zahlenwerte
-
-| Entität | Bereich | Beschreibung |
-|---|---|---|
-| **Durchfluss** | 0–100 % | Motordurchfluss (im 0-10V-Modus deaktiviert) |
-| **Frequenz** | 0–100 % | Wellenfrequenz |
-| **Fütterungsdauer** | 1–60 Min. | Dauer der Fütterungspause |
-
-### Binärsensoren (Diagnose)
-
-| Entität | Beschreibung |
-|---|---|
-| **Überstromfehler** | Motorüberstrom / Kurzschluss |
-| **Überspannungsfehler** | Motorüberspannung |
-| **Übertemperaturfehler** | Motortemperatur zu hoch |
-| **Unterspannungsfehler** | Motorunterspannung |
-| **Blockierter Rotor** | Motor blockiert / klemmt |
-| **Leerlauf-Fehler** | Pumpe läuft trocken |
-| **UART-Kommunikationsfehler** | Kommunikationsfehler Modul ↔ Hauptplatine |
-
-### Schaltfläche (Diagnose)
-
-| Entität | Beschreibung |
-|---|---|
-| **Aktualisieren** | Erzwingt eine sofortige Aktualisierung ohne auf den nächsten Abfrageintervall zu warten |
+Alle diese Geräte verwenden die Gizwits-IoT-Plattform. Die Unterstützung weiterer Geräte kann in zukünftigen Versionen hinzugefügt werden.
 
 ---
 
@@ -91,6 +44,81 @@ Jedes SmartDrift / EcoDrift-Gerät stellt folgende Entitäten in Home Assistant 
 2. `https://github.com/Elwinmage/ha-aquamedic-component` als **Integration** hinzufügen
 3. Nach **Aqua Medic** suchen und installieren
 4. Home Assistant neu starten
+
+---
+
+## Entitäten
+
+### EcoDrift / SmartDrift
+
+#### Schalter
+
+| Entität | Beschreibung |
+|---|---|
+| **Ein/Aus** | Hauptschalter |
+| **Wellentyp** | Impulsmodus (aus) / Gezeitenmodus (ein) |
+| **Fütterungsmodus** | Aktiviert die Fütterungspause |
+| **Timer** | Aktiviert den Programmmodus |
+| **0-10V-Steuermodus** | Wenn aktiv, wird der Durchflussregler deaktiviert |
+
+#### Auswahllisten
+
+| Entität | Optionen |
+|---|---|
+| **Wellenmodus** | Klassische Welle · Sinuswelle · Zufallswelle · Konstantfluss |
+| **Kopplung** | Unabhängig · Master · Slave |
+
+#### Zahlenwerte
+
+| Entität | Bereich | Beschreibung |
+|---|---|---|
+| **Durchfluss** | 0–100 % | Motordurchfluss (im 0-10V-Modus deaktiviert) |
+| **Frequenz** | 0–100 % | Wellenfrequenz |
+| **Fütterungsdauer** | 1–60 Min. | Dauer der Fütterungspause |
+
+#### Binärsensoren (Diagnose)
+
+| Entität | Beschreibung |
+|---|---|
+| **Überstromfehler** | Motorüberstrom / Kurzschluss |
+| **Überspannungsfehler** | Motorüberspannung |
+| **Übertemperaturfehler** | Motortemperatur zu hoch |
+| **Unterspannungsfehler** | Motorunterspannung |
+| **Blockierter Rotor** | Motor blockiert / klemmt |
+| **Leerlauf-Fehler** | Pumpe läuft trocken |
+| **UART-Kommunikationsfehler** | Kommunikationsfehler Modul ↔ Hauptplatine |
+
+#### Schaltfläche (Diagnose)
+
+| Entität | Beschreibung |
+|---|---|
+| **Aktualisieren** | Erzwingt eine sofortige Aktualisierung |
+
+### DC Runner
+
+> 🧪 Unterstützung ist implementiert, aber **noch nicht auf echter Hardware getestet**. Feedback willkommen.
+
+#### Schalter
+
+| Entität | Beschreibung |
+|---|---|
+| **Ein/Aus** | Hauptschalter |
+| **Fütterungsmodus** | Unterbricht den Durchfluss für 10 Minuten |
+| **0-10V-Steuermodus** | Wenn aktiv, wird der Durchfluss durch externes 0-10V-Signal gesteuert |
+
+#### Zahlenwerte
+
+| Entität | Bereich | Beschreibung |
+|---|---|---|
+| **Durchfluss** | 30–100 % | Pumpengeschwindigkeit (Minimum 30 % — darunter kann der Motor blockieren) |
+
+#### Binärsensoren (Diagnose)
+
+| Entität | Beschreibung |
+|---|---|
+| **Trocklauf-Fehler** | Automatische Abschaltung wenn 2 Min. kein Wasser erkannt |
+| **Blockierter Rotor** | Mechanische Blockierung erkannt |
+| **Spannungsfehler** | Versorgungsspannung außerhalb des Bereichs |
 
 ---
 
@@ -114,3 +142,4 @@ Nach der Einrichtung kann das Aktualisierungsintervall über **Einstellungen →
 ## Lizenz
 
 MIT – siehe [LICENSE](../../LICENSE).
+
