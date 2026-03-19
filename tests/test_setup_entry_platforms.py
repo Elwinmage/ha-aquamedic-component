@@ -203,3 +203,89 @@ async def test_switch_setup_entry_empty_coordinator(hass, coordinator):
     added: list = []
     await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
     assert len(added) == 0
+
+
+# ── DC Runner device fixture ──────────────────────────────────────────────────
+
+DC_RUNNER_DID = "dc_runner_test_did"
+
+def _add_dc_runner(coordinator):
+    """Add a DC Runner device to coordinator.data."""
+    from custom_components.aquamedic.const import DC_RUNNER_PRODUCT_KEY
+    from custom_components.aquamedic.coordinator import AquaMedicDeviceData
+    dc_device = {
+        **MOCK_DEVICE_ONLINE,
+        "did": DC_RUNNER_DID,
+        "product_key": DC_RUNNER_PRODUCT_KEY,
+        "dev_alias": "DC Runner Test",
+    }
+    coordinator.data[DC_RUNNER_DID] = AquaMedicDeviceData(dc_device, MOCK_LATEST)
+
+
+# ── switch: DC Runner branch ──────────────────────────────────────────────────
+
+async def test_switch_setup_entry_dc_runner(hass, coordinator):
+    """DC Runner branch creates 2 gizwits switches + 1 local switch = 3."""
+    from custom_components.aquamedic.switch import async_setup_entry
+
+    coordinator.data = {}
+    _add_dc_runner(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    # DC Runner: SwitchON + FeedSwitch + control_0_10v = 3
+    assert len(added) == 3
+
+
+async def test_switch_setup_entry_dc_runner_and_smartdrift(hass, coordinator):
+    """Both device types together yield 5 + 3 = 8 entities."""
+    from custom_components.aquamedic.switch import async_setup_entry
+
+    _add_dc_runner(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    # SmartDrift: 5, DC Runner: 3
+    assert len(added) == 8
+
+
+# ── number: DC Runner branch ──────────────────────────────────────────────────
+
+async def test_number_setup_entry_dc_runner(hass, coordinator):
+    """DC Runner branch creates 1 number entity (flow 30-100%)."""
+    from custom_components.aquamedic.number import async_setup_entry
+
+    coordinator.data = {}
+    _add_dc_runner(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert len(added) == 1
+
+
+async def test_number_setup_entry_dc_runner_min_value(hass, coordinator):
+    """DC Runner flow entity has min=30."""
+    from custom_components.aquamedic.number import async_setup_entry
+
+    coordinator.data = {}
+    _add_dc_runner(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert added[0].native_min_value == 30
+
+
+async def test_number_setup_entry_dc_runner_and_smartdrift(hass, coordinator):
+    """Both device types together: 3 SmartDrift + 1 DC Runner = 4."""
+    from custom_components.aquamedic.number import async_setup_entry
+
+    _add_dc_runner(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert len(added) == 4

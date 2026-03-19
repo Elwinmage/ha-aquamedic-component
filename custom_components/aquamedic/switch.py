@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, SMARTDRIFT_PRODUCT_KEY
+from .const import DOMAIN, DC_RUNNER_PRODUCT_KEY, SMARTDRIFT_PRODUCT_KEY
 from .coordinator import AquaMedicCoordinator
 from .entity import AquaMedicEntity
 
@@ -26,7 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class _SwitchKind(Enum):
     GIZWITS = auto()
-    LOCAL = auto()
+    LOCAL   = auto()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -79,6 +79,34 @@ SWITCH_DESCRIPTIONS: tuple[AquaMedicSwitchDescription, ...] = (
     ),
 )
 
+# DC Runner only has power, feeding mode and 0-10V control
+DC_RUNNER_SWITCH_DESCRIPTIONS: tuple[AquaMedicSwitchDescription, ...] = (
+    AquaMedicSwitchDescription(
+        key="power",
+        translation_key="power",
+        attr="SwitchON",
+        icon="mdi:power",
+        icon_off="mdi:power-off",
+    ),
+    AquaMedicSwitchDescription(
+        key="feed_switch",
+        translation_key="feed_switch",
+        attr="FeedSwitch",
+        icon="mdi:fish-off",
+        icon_off="mdi:fish",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    AquaMedicSwitchDescription(
+        key="control_0_10v",
+        translation_key="control_0_10v",
+        attr="",
+        kind=_SwitchKind.LOCAL,
+        icon="mdi:tune-variant",
+        icon_off="mdi:tune-variant",
+        entity_category=EntityCategory.CONFIG,
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -88,9 +116,13 @@ async def async_setup_entry(
     coordinator: AquaMedicCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[SwitchEntity] = []
     for did, dev in (coordinator.data or {}).items():
-        if dev.product_key != SMARTDRIFT_PRODUCT_KEY:
+        if dev.product_key == SMARTDRIFT_PRODUCT_KEY:
+            descs = SWITCH_DESCRIPTIONS
+        elif dev.product_key == DC_RUNNER_PRODUCT_KEY:
+            descs = DC_RUNNER_SWITCH_DESCRIPTIONS
+        else:
             continue
-        for desc in SWITCH_DESCRIPTIONS:
+        for desc in descs:
             if desc.kind is _SwitchKind.LOCAL:
                 entities.append(AquaMedicLocalSwitchEntity(coordinator, did, desc))
             else:
@@ -99,7 +131,6 @@ async def async_setup_entry(
 
 
 # ── Gizwits switch ────────────────────────────────────────────────────────────
-
 
 class AquaMedicSwitchEntity(AquaMedicEntity, SwitchEntity):  # type: ignore[misc]
     """Boolean switch backed by a Gizwits bool attribute."""
@@ -118,7 +149,9 @@ class AquaMedicSwitchEntity(AquaMedicEntity, SwitchEntity):  # type: ignore[misc
     def available(self) -> bool:  # type: ignore[override]
         dev = self._device
         return (
-            self.coordinator.last_update_success and dev is not None and dev.is_online
+            self.coordinator.last_update_success
+            and dev is not None
+            and dev.is_online
         )
 
     @property
@@ -142,7 +175,6 @@ class AquaMedicSwitchEntity(AquaMedicEntity, SwitchEntity):  # type: ignore[misc
 
 
 # ── Local 0-10V switch ────────────────────────────────────────────────────────
-
 
 class AquaMedicLocalSwitchEntity(  # type: ignore[misc, reportIncompatibleVariableOverride]
     CoordinatorEntity[AquaMedicCoordinator], RestoreEntity, SwitchEntity
@@ -184,13 +216,15 @@ class AquaMedicLocalSwitchEntity(  # type: ignore[misc, reportIncompatibleVariab
 
     @cached_property
     def device_info(self) -> DeviceInfo:  # type: ignore[reportIncompatibleVariableOverride]
+        from .const import DC_RUNNER_PRODUCT_KEY
         dev = self.coordinator.data.get(self._did) if self.coordinator.data else None
         name = dev.name if dev else self._did
+        model = "DC Runner" if (dev and dev.product_key == DC_RUNNER_PRODUCT_KEY) else "SmartDrift"
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=name,
             manufacturer="Aqua Medic",
-            model="SmartDrift",
+            model=model,
         )
 
     async def async_added_to_hass(self) -> None:

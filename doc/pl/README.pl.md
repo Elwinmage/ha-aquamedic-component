@@ -14,7 +14,7 @@
 
 # Supported Languages: [<img src="https://flagicons.lipis.dev/flags/4x3/gb.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/README.md) [<img src="https://flagicons.lipis.dev/flags/4x3/fr.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/fr/README.fr.md) [<img src="https://flagicons.lipis.dev/flags/4x3/de.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/de/README.de.md) [<img src="https://flagicons.lipis.dev/flags/4x3/es.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/es/README.es.md) [<img src="https://flagicons.lipis.dev/flags/4x3/it.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/it/README.it.md) [<img src="https://flagicons.lipis.dev/flags/4x3/pl.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/pl/README.pl.md) [<img src="https://flagicons.lipis.dev/flags/4x3/pt.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/pt/README.pt.md)
 
-Steruj pompami falującymi Aqua Medic z Home Assistant przez API chmury Gizwits.
+Steruj pompami Aqua Medic z Home Assistant przez API chmury Gizwits.
 
 ---
 
@@ -22,64 +22,17 @@ Steruj pompami falującymi Aqua Medic z Home Assistant przez API chmury Gizwits.
 
 Twoje urządzenie nie jest obsługiwane? Skontaktuj się ze mną.
 
-| Urządzenie | Nazwa wewnętrzna | Klucz produktu | Obsługiwane |
+> ✅ Obsługiwane &nbsp;|&nbsp; 🧪 Niesprawdzone (może działać) &nbsp;|&nbsp; ❌ Jeszcze nie obsługiwane
+
+| Urządzenie | Nazwa wewnętrzna | Klucz produktu | Status |
 |---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
-| Aqua Medic DC Runner (pompa powrotna) | `DC_Runner` | `8879684725d14066922374e50889f893` | ❌ |
+| Aqua Medic DC Runner x.1 / x.2 / x.3 (pompa powrotna) | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
 | Aqua Medic Reefdoser EVO | `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
 
-Wszystkie te urządzenia korzystają z platformy IoT Gizwits (ten sam backend co oficjalna aplikacja Aqua Medic). Obsługa dodatkowych urządzeń może zostać dodana w przyszłych wersjach.
-
----
-
-## Encje
-
-Każde urządzenie SmartDrift / EcoDrift udostępnia następujące encje w Home Assistant.
-
-### Przełączniki
-
-| Encja | Opis |
-|---|---|
-| **Zasilanie** | Główny włącznik/wyłącznik |
-| **Typ fali** | Tryb impulsu (wył.) / Tryb pływów (wł.) |
-| **Tryb karmienia** | Aktywuje przerwę karmienia |
-| **Timer** | Włącza tryb programowy |
-| **Tryb sterowania 0-10V** | Po włączeniu dezaktywuje suwak przepływu (pompa sterowana zewnętrznym sygnałem 0-10V) |
-
-### Listy wyboru
-
-| Encja | Opcje |
-|---|---|
-| **Tryb fali** | Klasyczna fala · Fala sinusoidalna · Losowa fala · Stały przepływ |
-| **Sprzężenie** | Niezależny · Master · Slave |
-
-### Liczby
-
-| Encja | Zakres | Opis |
-|---|---|---|
-| **Przepływ** | 0–100 % | Przepływ silnika (wyłączony w trybie 0-10V) |
-| **Częstotliwość** | 0–100 % | Częstotliwość fal |
-| **Czas karmienia** | 1–60 min | Czas trwania przerwy karmienia |
-
-### Czujniki binarne (diagnostyka)
-
-| Encja | Opis |
-|---|---|
-| **Błąd nadprądu** | Nadprąd / zwarcie silnika |
-| **Błąd nadnapięcia** | Nadnapięcie silnika |
-| **Błąd przegrzania** | Temperatura silnika zbyt wysoka |
-| **Błąd podnapięcia** | Podnapięcie silnika |
-| **Błąd zablokowanego wirnika** | Silnik zablokowany / zakleszczony |
-| **Błąd biegu jałowego** | Pompa pracuje na sucho |
-| **Błąd komunikacji UART** | Błąd komunikacji moduł ↔ płyta główna |
-
-### Przycisk (diagnostyka)
-
-| Encja | Opis |
-|---|---|
-| **Odśwież** | Wymusza natychmiastowe odświeżenie bez oczekiwania na następny cykl odpytywania |
+Wszystkie te urządzenia korzystają z platformy IoT Gizwits. Obsługa dodatkowych urządzeń może zostać dodana w przyszłych wersjach.
 
 ---
 
@@ -94,6 +47,81 @@ Każde urządzenie SmartDrift / EcoDrift udostępnia następujące encje w Home 
 
 ---
 
+## Encje
+
+### EcoDrift / SmartDrift
+
+#### Przełączniki
+
+| Encja | Opis |
+|---|---|
+| **Zasilanie** | Główny włącznik/wyłącznik |
+| **Typ fali** | Tryb impulsu (wył.) / Tryb pływów (wł.) |
+| **Tryb karmienia** | Aktywuje przerwę karmienia |
+| **Timer** | Włącza tryb programowy |
+| **Tryb sterowania 0-10V** | Po włączeniu dezaktywuje suwak przepływu |
+
+#### Listy wyboru
+
+| Encja | Opcje |
+|---|---|
+| **Tryb fali** | Klasyczna fala · Fala sinusoidalna · Losowa fala · Stały przepływ |
+| **Sprzężenie** | Niezależny · Master · Slave |
+
+#### Liczby
+
+| Encja | Zakres | Opis |
+|---|---|---|
+| **Przepływ** | 0–100 % | Przepływ silnika (wyłączony w trybie 0-10V) |
+| **Częstotliwość** | 0–100 % | Częstotliwość fal |
+| **Czas karmienia** | 1–60 min | Czas trwania przerwy karmienia |
+
+#### Czujniki binarne (diagnostyka)
+
+| Encja | Opis |
+|---|---|
+| **Błąd nadprądu** | Nadprąd / zwarcie silnika |
+| **Błąd nadnapięcia** | Nadnapięcie silnika |
+| **Błąd przegrzania** | Temperatura silnika zbyt wysoka |
+| **Błąd podnapięcia** | Podnapięcie silnika |
+| **Błąd zablokowanego wirnika** | Silnik zablokowany / zakleszczony |
+| **Błąd biegu jałowego** | Pompa pracuje na sucho |
+| **Błąd komunikacji UART** | Błąd komunikacji moduł ↔ płyta główna |
+
+#### Przycisk (diagnostyka)
+
+| Encja | Opis |
+|---|---|
+| **Odśwież** | Wymusza natychmiastowe odświeżenie |
+
+### DC Runner
+
+> 🧪 Wsparcie jest zaimplementowane, ale **jeszcze nie przetestowane na prawdziwym sprzęcie**. Opinie mile widziane.
+
+#### Przełączniki
+
+| Encja | Opis |
+|---|---|
+| **Zasilanie** | Główny włącznik/wyłącznik |
+| **Tryb karmienia** | Wstrzymuje przepływ na 10 minut |
+| **Tryb sterowania 0-10V** | Po włączeniu przepływ sterowany zewnętrznym sygnałem 0-10V |
+
+#### Liczby
+
+| Encja | Zakres | Opis |
+|---|---|---|
+| **Przepływ** | 30–100 % | Prędkość pompy (minimum 30 % — poniżej silnik może się zatrzymać) |
+
+#### Czujniki binarne (diagnostyka)
+
+| Encja | Opis |
+|---|---|
+| **Błąd biegu jałowego** | Automatyczne wyłączenie jeśli brak wody przez 2 min |
+| **Błąd zablokowanego wirnika** | Wykryto mechaniczną przeszkodę |
+| **Błąd napięcia** | Napięcie zasilania poza zakresem |
+
+---
+
 ## Konfiguracja
 
 Przejdź do **Ustawienia → Urządzenia i usługi → Dodaj integrację → Aqua Medic**.
@@ -102,15 +130,16 @@ Przejdź do **Ustawienia → Urządzenia i usługi → Dodaj integrację → Aqu
 |---|---|
 | **E-mail** | Adres e-mail konta Aqua Medic |
 | **Hasło** | Hasło konta Aqua Medic |
-| **Serwer Gizwits** | Serwer regionalny — wybierz **Europa** dla użytkowników UE |
-| **Interwał odświeżania** | Częstotliwość odpytywania urządzenia (5–300 s, domyślnie 30 s) |
+| **Serwer Gizwits** | Serwer regionalny — **Europa** dla użytkowników UE |
+| **Interwał odświeżania** | Częstotliwość odpytywania (5–300 s, domyślnie 30 s) |
 
 Właściwy serwer jest automatycznie wybierany na podstawie języka Home Assistant.
 
-Po konfiguracji interwał odświeżania można zmienić w **Ustawienia → Urządzenia i usługi → Aqua Medic → Konfiguruj**.
+Po konfiguracji interwał można zmienić w **Ustawienia → Urządzenia i usługi → Aqua Medic → Konfiguruj**.
 
 ---
 
 ## Licencja
 
 MIT – zobacz [LICENSE](../../LICENSE).
+

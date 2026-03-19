@@ -14,72 +14,25 @@
 
 # Supported Languages: [<img src="https://flagicons.lipis.dev/flags/4x3/gb.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/README.md) [<img src="https://flagicons.lipis.dev/flags/4x3/fr.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/fr/README.fr.md) [<img src="https://flagicons.lipis.dev/flags/4x3/de.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/de/README.de.md) [<img src="https://flagicons.lipis.dev/flags/4x3/es.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/es/README.es.md) [<img src="https://flagicons.lipis.dev/flags/4x3/it.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/it/README.it.md) [<img src="https://flagicons.lipis.dev/flags/4x3/pl.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/pl/README.pl.md) [<img src="https://flagicons.lipis.dev/flags/4x3/pt.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/pt/README.pt.md)
 
-Control your Aqua Medic wavemaker pumps from Home Assistant via the Gizwits cloud API.
+Control your Aqua Medic pumps from Home Assistant via the Gizwits cloud API.
 
 ---
 
 ## Supported Devices
 
-Your device is not supported? Please [contact me](https://github.com/Elwinmage/ha-aquamedic-component/discussions/4).
+Your device is not supported? Please contact me.
 
-| Device | Internal Name | Product Key | Supported |
+> ✅ Supported &nbsp;|&nbsp; 🧪 Untested (may work) &nbsp;|&nbsp; ❌ Not yet supported
+
+| Device | Internal Name | Product Key | Status |
 |---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
-| Aqua Medic DC Runner (return pump) | `DC_Runner` | `8879684725d14066922374e50889f893` | ❌ |
+| Aqua Medic DC Runner x.1 / x.2 / x.3 (return pump) | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
 | Aqua Medic Reefdoser EVO | `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
 
 All these devices use the Gizwits IoT platform (same backend as the official Aqua Medic app). Support for additional devices may be added in future releases.
-
----
-
-## Entities
-
-Each SmartDrift / EcoDrift device exposes the following entities in Home Assistant.
-
-### Switches
-
-| Entity | Description |
-|---|---|
-| **Power** | Main on/off |
-| **Wave type** | Pulse mode (off) / Tide mode (on) |
-| **Feeding mode** | Activates feeding pause |
-| **Timer** | Enables program mode |
-| **0-10V control mode** | When on, disables the Flow rate slider (pump driven by external 0-10V signal) because flow is controlled by 0-10V input |
-
-### Selects
-
-| Entity | Options |
-|---|---|
-| **Wave mode** | Classic wave · Sine wave · Random wave · Constant flow |
-| **Linkage** | Independent · Master · Slave |
-
-### Numbers
-
-| Entity | Range | Description |
-|---|---|---|
-| **Flow rate** | 0–100 % | Motor flow (disabled in 0-10V mode) |
-| **Frequency** | 0–100 % | Wave frequency |
-| **Feeding duration** | 1–60 min | Duration of feeding pause |
-
-### Binary Sensors (diagnostic)
-
-| Entity | Description |
-|---|---|
-| **Overcurrent fault** | Motor overcurrent / short circuit |
-| **Overvoltage fault** | Motor overvoltage |
-| **Overtemperature fault** | Motor temperature too high |
-| **Undervoltage fault** | Motor undervoltage |
-| **Locked rotor fault** | Motor jammed / blocked |
-| **No load fault** | Pump running dry |
-| **UART communication fault** | Module ↔ mainboard communication error |
-
-### Button (diagnostic)
-
-| Entity | Description |
-|---|---|
-| **Refresh** | Forces an immediate data refresh without waiting for the next poll interval |
 
 ---
 
@@ -91,6 +44,81 @@ Each SmartDrift / EcoDrift device exposes the following entities in Home Assista
 2. Add `https://github.com/Elwinmage/ha-aquamedic-component` as an **Integration**
 3. Search for **Aqua Medic** and install
 4. Restart Home Assistant
+
+---
+
+## Entities
+
+### EcoDrift / SmartDrift
+
+#### Switches
+
+| Entity | Description |
+|---|---|
+| **Power** | Main on/off |
+| **Wave type** | Pulse mode (off) / Tide mode (on) |
+| **Feeding mode** | Activates feeding pause |
+| **Timer** | Enables program mode |
+| **0-10V control mode** | When on, disables the Flow rate slider (pump driven by external 0-10V signal) |
+
+#### Selects
+
+| Entity | Options |
+|---|---|
+| **Wave mode** | Classic wave · Sine wave · Random wave · Constant flow |
+| **Linkage** | Independent · Master · Slave |
+
+#### Numbers
+
+| Entity | Range | Description |
+|---|---|---|
+| **Flow rate** | 0–100 % | Motor flow (disabled in 0-10V mode) |
+| **Frequency** | 0–100 % | Wave frequency |
+| **Feeding duration** | 1–60 min | Duration of feeding pause |
+
+#### Binary Sensors (diagnostic)
+
+| Entity | Description |
+|---|---|
+| **Overcurrent fault** | Motor overcurrent / short circuit |
+| **Overvoltage fault** | Motor overvoltage |
+| **Overtemperature fault** | Motor temperature too high |
+| **Undervoltage fault** | Motor undervoltage |
+| **Locked rotor fault** | Motor jammed / blocked |
+| **No load fault** | Pump running dry |
+| **UART communication fault** | Module ↔ mainboard communication error |
+
+#### Button (diagnostic)
+
+| Entity | Description |
+|---|---|
+| **Refresh** | Forces an immediate data refresh without waiting for the next poll interval |
+
+### DC Runner
+
+> 🧪 Support is implemented but **not yet tested on real hardware**. Feedback welcome.
+
+#### Switches
+
+| Entity | Description |
+|---|---|
+| **Power** | Main on/off |
+| **Feeding mode** | Pauses pump output for 10 minutes |
+| **0-10V control mode** | When on, flow is driven by external 0-10V signal |
+
+#### Numbers
+
+| Entity | Range | Description |
+|---|---|---|
+| **Flow rate** | 30–100 % | Pump speed (minimum 30 % — below this the motor may stall) |
+
+#### Binary Sensors (diagnostic)
+
+| Entity | Description |
+|---|---|
+| **Dry run fault** | Automatic shut-off if no water detected for 2 min |
+| **Locked rotor fault** | Mechanical obstruction detected |
+| **Voltage fault** | Input voltage out of range |
 
 ---
 
