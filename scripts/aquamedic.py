@@ -3,6 +3,7 @@ import argparse
 import uuid
 import sys
 import json
+import os
 
 # ── ANSI color helpers ────────────────────────────────────────────────────────
 RESET = "\033[0m"
@@ -126,6 +127,34 @@ def get_datapoints(session, token, product_key):
     return None
 
 
+def save_datapoints(device, schema, output_dir):
+    """Save the raw datapoint schema to a JSON file in output_dir."""
+    os.makedirs(output_dir, exist_ok=True)
+
+    name = (device.get("dev_alias") or device.get("product_name") or "unknown")
+    # Build a safe filename: <name>_<product_key>.json
+    safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in name)
+    product_key = device.get("product_key", "unknown")
+    filename = f"{safe_name}_{product_key}.json"
+    filepath = os.path.join(output_dir, filename)
+
+    payload = {
+        "device": {
+            "dev_alias":    device.get("dev_alias"),
+            "product_name": device.get("product_name"),
+            "did":          device.get("did"),
+            "product_key":  product_key,
+            "is_online":    device.get("is_online"),
+        },
+        "datapoints": schema,
+    }
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=4, ensure_ascii=False)
+
+    ok(f"Datapoints sauvegardés → {filepath}")
+
+
 def describe_datapoint(dp):
     """Return a human-readable one-liner for a single datapoint."""
     name = dp.get("name", "?")
@@ -154,7 +183,7 @@ def describe_datapoint(dp):
     )
 
 
-def print_device_info(session, token, device):
+def print_device_info(session, token, device, save_dir=None):
     """Print full info for one device: metadata, live state and datapoints."""
     name = device.get("dev_alias") or device.get("product_name") or "Inconnu"
     did = device.get("did", "?")
@@ -181,6 +210,7 @@ def print_device_info(session, token, device):
             print(f"    {DIM}(aucune donnée disponible){RESET}")
 
     # ── Schéma datapoints ────────────────────────────────────────
+    schema = None
     if product_key:
         print(f"\n  {CYAN}🗂️  Datapoints supportés{RESET}")
         schema = get_datapoints(session, token, product_key)
@@ -201,10 +231,14 @@ def print_device_info(session, token, device):
         else:
             print(f"    {DIM}(datapoints non accessibles pour ce produit){RESET}")
 
+    # ── Sauvegarde JSON ──────────────────────────────────────────
+    if save_dir is not None and schema is not None:
+        save_datapoints(device, schema, save_dir)
+
     print("-" * 60)
 
 
-def get_gizwits_devices(username, password):
+def get_gizwits_devices(username, password, save_dir=None):
     session = requests.Session()
     phone_id = str(uuid.uuid4()).upper()
 
@@ -221,23 +255,38 @@ def get_gizwits_devices(username, password):
 
         print(f"\n{BOLD}📱 {len(devices)} appareil(s) trouvé(s) :{RESET}\n")
         for d in devices:
-            print_device_info(session, token, d)
+            print_device_info(session, token, d, save_dir=save_dir)
 
     except Exception as e:
         err(f"Erreur système : {e}")
 
 
 if __name__ == "__main__":
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    default_output = os.path.join(script_dir, "devices_datapoints")
+
     parser = argparse.ArgumentParser(
         description="Gizwits Device Explorer — Aqua Medic / SmartDrift",
-        epilog="Usage: python aqua.py email password",
+        epilog="Usage: python aquamedic.py email password [--save]",
     )
     parser.add_argument("username", help="Email Gizwits / Aqua Medic")
     parser.add_argument("password", help="Mot de passe")
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help=f"Enregistre les datapoints JSON dans {default_output}/",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=default_output,
+        metavar="DIR",
+        help=f"Dossier de sortie pour --save (défaut : {default_output})",
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
 
     args = parser.parse_args()
-    get_gizwits_devices(args.username, args.password)
+    save_dir = args.output_dir if args.save else None
+    get_gizwits_devices(args.username, args.password, save_dir=save_dir)
