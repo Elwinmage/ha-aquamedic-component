@@ -14,6 +14,24 @@ from .const import (
     GIZWITS_USER_AGENT,
 )
 
+
+def _sim_urls(host: str) -> dict[str, str]:
+    """Build Gizwits API URL map for the local simulator at *host*.
+
+    Args:
+        host: Base URL of the simulator, e.g. ``http://192.168.100.10:8080``.
+    """
+    h = host.rstrip("/")
+    return {
+        "LOGIN": f"{h}/app/login",
+        "PROVISION": f"{h}/app/provision",
+        "BINDINGS": f"{h}/app/bindings",
+        "DEVDATA": f"{h}/app/devdata/{{device_id}}/latest",
+        "CONTROL": f"{h}/app/control/{{device_id}}",
+        "DATAPOINT": f"{h}/app/datapoint",
+    }
+
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -34,11 +52,15 @@ class AquaMedicClient:
         username: str,
         password: str,
         region: str = "eu",
+        sim_host: str | None = None,
     ) -> None:
         self._session = session
         self._username = username
         self._password = password
-        self._urls = GIZWITS_API_URLS[region]
+        if region == "sim" and sim_host:
+            self._urls = _sim_urls(sim_host)
+        else:
+            self._urls = GIZWITS_API_URLS[region]
         self._token: str | None = None
 
     # ── Internal helpers ──────────────────────────────────────────────────────

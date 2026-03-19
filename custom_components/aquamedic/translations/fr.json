@@ -11,8 +11,18 @@
           "scan_interval": "Intervalle de rafraîchissement (secondes)"
         },
         "data_description": {
-          "region": "Pour la France et l'Europe, sélectionnez « Europe ».",
+          "region": "Pour la France et l'Europe, sélectionnez « Europe ». Choisissez « Simulateur » pour les tests locaux.",
           "scan_interval": "Fréquence de mise à jour de l'état des appareils (5–300 s)."
+        }
+      },
+      "sim_host": {
+        "title": "Aqua Medic — Serveur simulateur",
+        "description": "Entrez l'URL de base de votre simulateur Gizwits local.",
+        "data": {
+          "sim_host": "URL du simulateur"
+        },
+        "data_description": {
+          "sim_host": "URL de base du simulateur, ex. http://192.168.100.10:8080"
         }
       }
     },

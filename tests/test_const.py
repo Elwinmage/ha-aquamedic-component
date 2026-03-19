@@ -51,7 +51,7 @@ def test_update_interval():
 
 
 def test_regions_defined():
-    assert set(GIZWITS_REGIONS.keys()) == {"eu", "us", "cn"}
+    assert set(GIZWITS_REGIONS.keys()) == {"eu", "us", "cn", "sim"}
     assert DEFAULT_REGION == "eu"
 
 

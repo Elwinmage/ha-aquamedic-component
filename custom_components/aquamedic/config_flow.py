@@ -1,8 +1,9 @@
 """Config flow for the Aqua Medic integration.
 
 Steps:
-  user  → username + password + region (pre-selected from HA language)
-          + scan_interval
+  user     → username + password + region (pre-selected from HA language)
+              + scan_interval
+  sim_host → (only when region == "sim") simulator host URL
 
 Options flow:
   init  → scan_interval
@@ -36,6 +37,7 @@ from .const import (
     CONF_PASSWORD,
     CONF_REGION,
     CONF_SCAN_INTERVAL,
+    CONF_SIM_HOST,
     CONF_USERNAME,
     DEFAULT_REGION,
     DEFAULT_SCAN_INTERVAL,
@@ -44,6 +46,7 @@ from .const import (
     LANGUAGE_TO_REGION,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
+    SIM_DEFAULT_HOST,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -81,10 +84,46 @@ def _interval_selector() -> NumberSelector:
     )
 
 
+def _user_schema(default_region: str) -> vol.Schema:
+    """Return the vol.Schema for the user step."""
+    region_options = [
+        SelectOptionDict(value=k, label=v) for k, v in GIZWITS_REGIONS.items()
+    ]
+    return vol.Schema(
+        {
+            vol.Required(CONF_USERNAME): TextSelector(
+                TextSelectorConfig(type=TextSelectorType.EMAIL, autocomplete="email")
+            ),
+            vol.Required(CONF_PASSWORD): TextSelector(
+                TextSelectorConfig(
+                    type=TextSelectorType.PASSWORD,
+                    autocomplete="current-password",
+                )
+            ),
+            vol.Required(CONF_REGION, default=default_region): SelectSelector(
+                SelectSelectorConfig(
+                    options=region_options, mode=SelectSelectorMode.LIST
+                )
+            ),
+            vol.Required(
+                CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
+            ): _interval_selector(),
+        }
+    )
+
+
 class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle the Aqua Medic config flow."""
+    """Handle the Aqua Medic config flow.
+
+    Step 1 (user):    username, password, region, scan_interval
+    Step 2 (sim_host): shown only when region == "sim"; collects the
+                       simulator base URL (default: http://localhost:8080).
+    """
 
     VERSION = 1
+
+    def __init__(self) -> None:
+        self._user_input: dict[str, Any] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -95,72 +134,116 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         default_region = _default_region(ha_lang)
 
         if user_input is not None:
-            username = user_input[CONF_USERNAME].strip()
-            password = user_input[CONF_PASSWORD]
-            region = user_input[CONF_REGION]
-            interval = int(user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
-
-            session = async_get_clientsession(self.hass)
-            client = AquaMedicClient(session, username, password, region)
-
-            try:
-                await client.authenticate()
-                devices = await client.get_devices()
-                _log_devices(devices)
-            except AquaMedicAuthError:
-                errors["base"] = "invalid_auth"
-            except AquaMedicConnectionError:
-                errors["base"] = "cannot_connect"
-            except Exception:  # noqa: BLE001
-                _LOGGER.exception("Unexpected error during Aqua Medic setup")
-                errors["base"] = "unknown"
-
-            if not errors:
-                await self.async_set_unique_id(f"{region}_{username}")
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(
-                    title=username,
-                    data={
-                        CONF_USERNAME: username,
-                        CONF_PASSWORD: password,
-                        CONF_REGION: region,
-                        CONF_SCAN_INTERVAL: interval,
-                    },
-                )
-
-        region_options = [
-            SelectOptionDict(value=k, label=v) for k, v in GIZWITS_REGIONS.items()
-        ]
-
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_USERNAME): TextSelector(
-                    TextSelectorConfig(
-                        type=TextSelectorType.EMAIL, autocomplete="email"
-                    )
+            self._user_input = {
+                CONF_USERNAME: user_input[CONF_USERNAME].strip(),
+                CONF_PASSWORD: user_input[CONF_PASSWORD],
+                CONF_REGION: user_input[CONF_REGION],
+                CONF_SCAN_INTERVAL: int(
+                    user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
                 ),
-                vol.Required(CONF_PASSWORD): TextSelector(
-                    TextSelectorConfig(
-                        type=TextSelectorType.PASSWORD,
-                        autocomplete="current-password",
-                    )
-                ),
-                vol.Required(CONF_REGION, default=default_region): SelectSelector(
-                    SelectSelectorConfig(
-                        options=region_options, mode=SelectSelectorMode.LIST
-                    )
-                ),
-                vol.Required(
-                    CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
-                ): _interval_selector(),
             }
-        )
+            # Simulator region → ask for host before connecting
+            if self._user_input[CONF_REGION] == "sim":
+                return await self.async_step_sim_host()
+
+            return await self._async_try_connect(errors)
 
         return self.async_show_form(
             step_id="user",
+            data_schema=_user_schema(default_region),
+            errors=errors,
+        )
+
+    async def async_step_sim_host(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Step 2 — collect simulator host URL (sim region only)."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            self._user_input[CONF_SIM_HOST] = user_input[CONF_SIM_HOST].rstrip("/")
+            return await self._async_try_connect(errors)
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_SIM_HOST, default=SIM_DEFAULT_HOST): TextSelector(
+                    TextSelectorConfig(type=TextSelectorType.URL)
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="sim_host",
             data_schema=schema,
             errors=errors,
         )
+
+    async def _async_try_connect(
+        self, errors: dict[str, str]
+    ) -> config_entries.ConfigFlowResult:
+        """Attempt authentication and, on success, create the config entry."""
+        inp = self._user_input
+        username = inp[CONF_USERNAME]
+        password = inp[CONF_PASSWORD]
+        region = inp[CONF_REGION]
+        interval = inp[CONF_SCAN_INTERVAL]
+        sim_host = inp.get(CONF_SIM_HOST)
+
+        session = async_get_clientsession(self.hass)
+        client = AquaMedicClient(session, username, password, region, sim_host=sim_host)
+
+        try:
+            await client.authenticate()
+            devices = await client.get_devices()
+            _log_devices(devices)
+        except AquaMedicAuthError:
+            errors["base"] = "invalid_auth"
+        except AquaMedicConnectionError:
+            errors["base"] = "cannot_connect"
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Unexpected error during Aqua Medic setup")
+            errors["base"] = "unknown"
+
+        if errors:
+            # Return to the right step on error
+            if region == "sim":
+                schema = vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_SIM_HOST, default=sim_host or SIM_DEFAULT_HOST
+                        ): TextSelector(TextSelectorConfig(type=TextSelectorType.URL)),
+                    }
+                )
+                return self.async_show_form(
+                    step_id="sim_host",
+                    data_schema=schema,
+                    errors=errors,
+                )
+            ha_lang = self.hass.config.language or "en"
+            return self.async_show_form(
+                step_id="user",
+                data_schema=_user_schema(_default_region(ha_lang)),
+                errors=errors,
+            )
+
+        unique_id = (
+            f"{region}_{sim_host}_{username}"
+            if region == "sim"
+            else f"{region}_{username}"
+        )
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
+
+        entry_data: dict[str, Any] = {
+            CONF_USERNAME: username,
+            CONF_PASSWORD: password,
+            CONF_REGION: region,
+            CONF_SCAN_INTERVAL: interval,
+        }
+        if region == "sim" and sim_host:
+            entry_data[CONF_SIM_HOST] = sim_host
+
+        title = f"{username} (simulator)" if region == "sim" else username
+        return self.async_create_entry(title=title, data=entry_data)
 
     @staticmethod
     @callback
