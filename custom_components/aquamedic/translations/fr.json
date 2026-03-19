@@ -7,10 +7,12 @@
         "data": {
           "username": "Adresse e-mail",
           "password": "Mot de passe",
-          "region": "Serveur Gizwits"
+          "region": "Serveur Gizwits",
+          "scan_interval": "Intervalle de rafraîchissement (secondes)"
         },
         "data_description": {
-          "region": "Pour la France et l'Europe, sélectionnez « Europe »."
+          "region": "Pour la France et l'Europe, sélectionnez « Europe ».",
+          "scan_interval": "Fréquence de mise à jour de l'état des appareils (5–300 s)."
         }
       }
     },
@@ -21,6 +23,96 @@
     },
     "abort": {
       "already_configured": "Ce compte est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aqua Medic — Options",
+        "data": {
+          "scan_interval": "Intervalle de rafraîchissement (secondes)"
+        },
+        "data_description": {
+          "scan_interval": "Fréquence de mise à jour de l'état des appareils (5–300 s)."
+        }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Actualiser"
+      }
+    },
+    "switch": {
+      "power": {
+        "name": "Alimentation"
+      },
+      "pulse_tide": {
+        "name": "Type de vague"
+      },
+      "feed_switch": {
+        "name": "Mode nourrissage"
+      },
+      "timer_on": {
+        "name": "Minuterie"
+      },
+      "control_0_10v": {
+        "name": "Mode contrôle 0-10V"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Mode de brassage",
+        "state": {
+          "classic_wave": "Vague classique",
+          "sine_wave": "Vague sinusoïdale",
+          "random_wave": "Vague aléatoire",
+          "constant_flow": "Flux constant"
+        }
+      },
+      "linkage": {
+        "name": "Couplage",
+        "state": {
+          "independent": "Indépendant",
+          "master": "Maître",
+          "slave": "Esclave"
+        }
+      }
+    },
+    "number": {
+      "flow": {
+        "name": "Débit"
+      },
+      "frequency": {
+        "name": "Fréquence"
+      },
+      "feed_time": {
+        "name": "Durée nourrissage"
+      }
+    },
+    "binary_sensor": {
+      "fault_overcurrent": {
+        "name": "Défaut surintensité"
+      },
+      "fault_overvoltage": {
+        "name": "Défaut surtension"
+      },
+      "fault_overtemp": {
+        "name": "Défaut température"
+      },
+      "fault_undervoltage": {
+        "name": "Défaut sous-tension"
+      },
+      "fault_lockedrotor": {
+        "name": "Défaut rotor bloqué"
+      },
+      "fault_no_liveload": {
+        "name": "Défaut marche à vide"
+      },
+      "fault_uart": {
+        "name": "Défaut communication UART"
+      }
     }
   }
 }

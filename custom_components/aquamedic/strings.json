@@ -2,25 +2,117 @@
   "config": {
     "step": {
       "user": {
-        "title": "Aqua Medic — Connexion",
-        "description": "Entrez vos identifiants de l'application Aqua Medic (compte Gizwits).",
+        "title": "Aqua Medic — Sign in",
+        "description": "Enter your Aqua Medic app credentials (Gizwits account).",
         "data": {
-          "username": "Adresse e-mail",
-          "password": "Mot de passe",
-          "region": "Serveur Gizwits"
+          "username": "E-mail address",
+          "password": "Password",
+          "region": "Gizwits server",
+          "scan_interval": "Refresh interval (seconds)"
         },
         "data_description": {
-          "region": "Sélectionnez le serveur correspondant à votre région. Pour la France et l'Europe, choisissez « Europe »."
+          "region": "Select the server for your region. For Europe, choose « Europe ».",
+          "scan_interval": "How often the device state is polled (5–300 s). Default: 30 s."
         }
       }
     },
     "error": {
-      "invalid_auth": "Identifiants incorrects. Vérifiez votre e-mail et mot de passe.",
-      "cannot_connect": "Impossible de contacter le serveur Gizwits. Vérifiez votre connexion.",
-      "unknown": "Une erreur inattendue s'est produite."
+      "invalid_auth": "Invalid credentials. Check your e-mail and password.",
+      "cannot_connect": "Cannot reach the Gizwits server. Check your network.",
+      "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "Ce compte est déjà configuré."
+      "already_configured": "This account is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aqua Medic — Options",
+        "data": {
+          "scan_interval": "Refresh interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often the device state is polled (5–300 s)."
+        }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Refresh"
+      }
+    },
+    "switch": {
+      "power": {
+        "name": "Power"
+      },
+      "pulse_tide": {
+        "name": "Wave type"
+      },
+      "feed_switch": {
+        "name": "Feeding mode"
+      },
+      "timer_on": {
+        "name": "Timer"
+      },
+      "control_0_10v": {
+        "name": "0-10V control mode"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Wave mode",
+        "state": {
+          "classic_wave": "Classic wave",
+          "sine_wave": "Sine wave",
+          "random_wave": "Random wave",
+          "constant_flow": "Constant flow"
+        }
+      },
+      "linkage": {
+        "name": "Linkage",
+        "state": {
+          "independent": "Independent",
+          "master": "Master",
+          "slave": "Slave"
+        }
+      }
+    },
+    "number": {
+      "flow": {
+        "name": "Flow rate"
+      },
+      "frequency": {
+        "name": "Frequency"
+      },
+      "feed_time": {
+        "name": "Feeding duration"
+      }
+    },
+    "binary_sensor": {
+      "fault_overcurrent": {
+        "name": "Overcurrent fault"
+      },
+      "fault_overvoltage": {
+        "name": "Overvoltage fault"
+      },
+      "fault_overtemp": {
+        "name": "Overtemperature fault"
+      },
+      "fault_undervoltage": {
+        "name": "Undervoltage fault"
+      },
+      "fault_lockedrotor": {
+        "name": "Locked rotor fault"
+      },
+      "fault_no_liveload": {
+        "name": "No load fault"
+      },
+      "fault_uart": {
+        "name": "UART communication fault"
+      }
     }
   }
 }

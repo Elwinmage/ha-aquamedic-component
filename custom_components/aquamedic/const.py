@@ -18,9 +18,13 @@ GIZWITS_USER_AGENT = "gizwitssuperapprn/154300000 CFNetwork/3826.500.131 Darwin/
 CONF_REGION = "region"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
+CONF_SCAN_INTERVAL = "scan_interval"
 
 # ── Update interval ───────────────────────────────────────────────────────────
-UPDATE_INTERVAL = timedelta(seconds=30)
+DEFAULT_SCAN_INTERVAL = 30  # seconds
+MIN_SCAN_INTERVAL = 5
+MAX_SCAN_INTERVAL = 300
+UPDATE_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
 # ── Gizwits regions and their API endpoints ───────────────────────────────────
 GIZWITS_REGIONS: dict[str, str] = {
@@ -57,9 +61,7 @@ GIZWITS_API_URLS: dict[str, dict[str, str]] = {
 }
 
 # ── Home Assistant language → Gizwits region ─────────────────────────────────
-# Used in config_flow to pre-select the most likely server.
 LANGUAGE_TO_REGION: dict[str, str] = {
-    # European languages → EU server
     "fr": "eu",
     "de": "eu",
     "es": "eu",
@@ -84,14 +86,16 @@ LANGUAGE_TO_REGION: dict[str, str] = {
     "lt": "eu",
     "uk": "eu",
     "el": "eu",
-    "en": "eu",  # English defaults to EU (most AquaMedic users are EU)
-    # Chinese → CN server
+    "en": "eu",
     "zh": "cn",
     "zh-hans": "cn",
     "zh-hant": "cn",
-    # Others → US server
     "ja": "us",
     "ko": "us",
 }
 
 DEFAULT_REGION = "eu"
+
+# ── Known product keys ────────────────────────────────────────────────────────
+# SmartDrift x.1 / x.3 series (confirmed via datapoint discovery)
+SMARTDRIFT_PRODUCT_KEY = "63632f4902094055ab3fd994c0d612fa"
