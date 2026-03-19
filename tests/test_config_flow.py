@@ -21,12 +21,25 @@ from custom_components.aquamedic.const import (
     CONF_PASSWORD,
     CONF_REGION,
     CONF_SCAN_INTERVAL,
+    CONF_SIM_HOST,
     CONF_USERNAME,
     DEFAULT_REGION,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
 from tests.conftest import MOCK_CONFIG_ENTRY_DATA, MOCK_DID, MOCK_PASSWORD, MOCK_USERNAME
+
+
+# ── Simulator flag fixture ────────────────────────────────────────────────────
+
+@pytest.fixture
+def simulator_flag():
+    """Create the .simulator_enabled flag file for the duration of the test."""
+    from custom_components.aquamedic.config_flow import _SIM_FLAG
+    _SIM_FLAG.touch()
+    yield
+    _SIM_FLAG.unlink(missing_ok=True)
+
 
 # ── Shared input ──────────────────────────────────────────────────────────────
 
@@ -340,3 +353,225 @@ def test_interval_selector_returns_selector():
     from homeassistant.helpers.selector import NumberSelector
     sel = _interval_selector()
     assert isinstance(sel, NumberSelector)
+
+
+# ── Simulator region flow ─────────────────────────────────────────────────────
+
+SIM_HOST = "http://192.168.100.10:8080"
+
+SIM_INPUT_STEP1 = {
+    CONF_USERNAME:      MOCK_USERNAME,
+    CONF_PASSWORD:      MOCK_PASSWORD,
+    CONF_REGION:        "sim",
+    CONF_SCAN_INTERVAL: 30,
+}
+
+SIM_INPUT_STEP2 = {CONF_SIM_HOST: SIM_HOST}
+
+
+async def test_sim_flow_shows_sim_host_step(hass, register_config_flow, simulator_flag):
+    """Choosing 'sim' region redirects to the sim_host step."""
+    with (
+        patch("custom_components.aquamedic.config_flow.AquaMedicClient"),
+        patch("custom_components.aquamedic.config_flow.async_get_clientsession", return_value=MagicMock()),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], SIM_INPUT_STEP1
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "sim_host"
+
+
+async def test_sim_flow_default_host_in_schema(hass, register_config_flow, simulator_flag):
+    """sim_host step shows the default localhost URL."""
+    from custom_components.aquamedic.const import SIM_DEFAULT_HOST
+    with (
+        patch("custom_components.aquamedic.config_flow.AquaMedicClient"),
+        patch("custom_components.aquamedic.config_flow.async_get_clientsession", return_value=MagicMock()),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], SIM_INPUT_STEP1
+        )
+
+    # The default value in the schema key should be SIM_DEFAULT_HOST
+    keys = {str(k): k for k in result["data_schema"].schema}
+    sim_key = keys.get(CONF_SIM_HOST)
+    assert sim_key is not None
+    assert sim_key.default() == SIM_DEFAULT_HOST
+
+
+async def test_sim_flow_success_creates_entry(hass, register_config_flow, simulator_flag):
+    """Full sim flow creates an entry with sim_host stored."""
+    with (
+        patch("custom_components.aquamedic.config_flow.AquaMedicClient") as MockClient,
+        patch("custom_components.aquamedic.config_flow.async_get_clientsession", return_value=MagicMock()),
+    ):
+        MockClient.return_value.authenticate = AsyncMock()
+        MockClient.return_value.get_devices  = AsyncMock(return_value=[])
+
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], SIM_INPUT_STEP1
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], SIM_INPUT_STEP2
+        )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_REGION]    == "sim"
+    assert result["data"][CONF_SIM_HOST]  == SIM_HOST
+    assert "(simulator)" in result["title"]
+
+
+async def test_sim_flow_client_receives_sim_host(hass, register_config_flow, simulator_flag):
+    """AquaMedicClient is instantiated with sim_host kwarg."""
+    with (
+        patch("custom_components.aquamedic.config_flow.AquaMedicClient") as MockClient,
+        patch("custom_components.aquamedic.config_flow.async_get_clientsession", return_value=MagicMock()),
+    ):
+        MockClient.return_value.authenticate = AsyncMock()
+        MockClient.return_value.get_devices  = AsyncMock(return_value=[])
+
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], SIM_INPUT_STEP1
+        )
+        await hass.config_entries.flow.async_configure(
+            result["flow_id"], SIM_INPUT_STEP2
+        )
+
+    _, kwargs = MockClient.call_args
+    assert kwargs.get("sim_host") == SIM_HOST
+
+
+async def test_sim_flow_auth_error_returns_to_sim_host_step(hass, register_config_flow, simulator_flag):
+    """Auth error while on sim region re-shows the sim_host step."""
+    with (
+        patch("custom_components.aquamedic.config_flow.AquaMedicClient") as MockClient,
+        patch("custom_components.aquamedic.config_flow.async_get_clientsession", return_value=MagicMock()),
+    ):
+        MockClient.return_value.authenticate = AsyncMock(
+            side_effect=AquaMedicAuthError("bad")
+        )
+
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], SIM_INPUT_STEP1
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], SIM_INPUT_STEP2
+        )
+
+    assert result["type"]           == FlowResultType.FORM
+    assert result["step_id"]        == "sim_host"
+    assert result["errors"]["base"] == "invalid_auth"
+
+
+async def test_sim_flow_cannot_connect_returns_to_sim_host_step(hass, register_config_flow, simulator_flag):
+    """Connection error while on sim region re-shows the sim_host step."""
+    with (
+        patch("custom_components.aquamedic.config_flow.AquaMedicClient") as MockClient,
+        patch("custom_components.aquamedic.config_flow.async_get_clientsession", return_value=MagicMock()),
+    ):
+        MockClient.return_value.authenticate = AsyncMock(
+            side_effect=AquaMedicConnectionError("unreachable")
+        )
+
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], SIM_INPUT_STEP1
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], SIM_INPUT_STEP2
+        )
+
+    assert result["type"]           == FlowResultType.FORM
+    assert result["step_id"]        == "sim_host"
+    assert result["errors"]["base"] == "cannot_connect"
+
+
+# ── client._sim_urls ──────────────────────────────────────────────────────────
+
+def test_sim_urls_builds_correct_urls():
+    from custom_components.aquamedic.client import _sim_urls
+    urls = _sim_urls("http://192.168.100.10:8080")
+    assert urls["LOGIN"]     == "http://192.168.100.10:8080/app/login"
+    assert urls["BINDINGS"]  == "http://192.168.100.10:8080/app/bindings"
+    assert "{device_id}" in urls["DEVDATA"]
+    assert "{device_id}" in urls["CONTROL"]
+
+
+def test_sim_urls_strips_trailing_slash():
+    from custom_components.aquamedic.client import _sim_urls
+    urls = _sim_urls("http://localhost:8080/")
+    assert urls["LOGIN"] == "http://localhost:8080/app/login"
+
+
+# ── AquaMedicClient sim_host kwarg ────────────────────────────────────────────
+
+def test_client_uses_sim_urls_when_region_sim():
+    import aiohttp
+    from unittest.mock import MagicMock
+    from custom_components.aquamedic.client import AquaMedicClient, _sim_urls
+    session = MagicMock(spec=aiohttp.ClientSession)
+    client = AquaMedicClient(session, "u", "p", region="sim", sim_host="http://sim:9000")
+    assert client._urls["LOGIN"] == "http://sim:9000/app/login"
+
+
+def test_client_uses_standard_urls_when_no_sim_host():
+    import aiohttp
+    from unittest.mock import MagicMock
+    from custom_components.aquamedic.client import AquaMedicClient
+    from custom_components.aquamedic.const import GIZWITS_API_URLS
+    session = MagicMock(spec=aiohttp.ClientSession)
+    client = AquaMedicClient(session, "u", "p", region="eu")
+    assert client._urls == GIZWITS_API_URLS["eu"]
+
+
+# ── Simulator flag: disabled when file absent ─────────────────────────────────
+
+async def test_sim_region_hidden_when_flag_absent(hass, register_config_flow):
+    """'sim' region must NOT appear in the form when flag file is absent."""
+    from custom_components.aquamedic.config_flow import _SIM_FLAG
+    _SIM_FLAG.unlink(missing_ok=True)   # ensure flag is absent
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] == FlowResultType.FORM
+    schema_keys = {str(k) for k in result["data_schema"].schema}
+    # Extract the region selector options
+    from homeassistant.helpers.selector import SelectSelector
+    region_sel = next(
+        v for k, v in result["data_schema"].schema.items()
+        if str(k) == "region"
+    )
+    option_values = [o["value"] for o in region_sel.config["options"]]
+    assert "sim" not in option_values
+
+
+async def test_sim_step_aborts_when_flag_absent(hass, register_config_flow):
+    """async_step_sim_host must abort when flag file is absent."""
+    from custom_components.aquamedic.config_flow import _SIM_FLAG, AquaMedicConfigFlow
+    _SIM_FLAG.unlink(missing_ok=True)
+
+    flow = AquaMedicConfigFlow()
+    flow.hass = hass
+    result = await flow.async_step_sim_host()
+    assert result["type"] == "abort"
+    assert result["reason"] == "simulator_disabled"

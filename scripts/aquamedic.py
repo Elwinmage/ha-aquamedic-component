@@ -37,7 +37,19 @@ def step(msg):
 
 # ── Identifiants confirmés ────────────────────────────────────────────────────
 APP_ID = "07452c4f036a4be3acedf8dbeef38320"
-BASE_URL = "https://euapi.gizwits.com/app"
+REAL_BASE_URL = "https://euapi.gizwits.com/app"
+
+
+def build_urls(base: str) -> dict:
+    """Return all API URLs derived from a base URL (real cloud or simulator)."""
+    b = base.rstrip("/")
+    return {
+        "provision": f"{b}/provision",
+        "login": f"{b}/login",
+        "bindings": f"{b}/bindings",
+        "devdata": f"{b}/devdata/{{device_id}}/latest",
+        "datapoint": f"{b}/datapoint",
+    }
 
 
 def get_headers(token=None):
@@ -52,11 +64,11 @@ def get_headers(token=None):
     return h
 
 
-def provision(session, phone_id):
+def provision(session, phone_id, urls):
     """Provision a virtual mobile client — required before login."""
-    step(f"🔧 Provisioning du client (Phone ID: {phone_id[:8]}...)...")
+    step(f"Provisioning du client (Phone ID: {phone_id[:8]}...)...")
     res = session.post(
-        f"{BASE_URL}/provision",
+        urls["provision"],
         headers=get_headers(),
         json={
             "phone_id": phone_id,
@@ -67,16 +79,16 @@ def provision(session, phone_id):
         },
     )
     if res.status_code == 200:
-        ok("Provisioning réussi.")
+        ok("Provisioning reussi.")
     else:
-        warn(f"Provisioning ignoré ou échoué ({res.status_code})")
+        warn(f"Provisioning ignore ou echoue ({res.status_code})")
 
 
-def login(session, username, password):
+def login(session, username, password, urls):
     """Authenticate and return token."""
-    step(f"🔐 Connexion pour {username}...")
+    step(f"Connexion pour {username}...")
     res = session.post(
-        f"{BASE_URL}/login",
+        urls["login"],
         headers=get_headers(),
         json={"username": username, "password": password},
     )
@@ -84,40 +96,37 @@ def login(session, username, password):
         err(f"Erreur Login: {res.text}")
         return None
     token = res.json().get("token")
-    ok("Authentifié ! Token récupéré.")
+    ok("Authentifie! Token recupere.")
     return token
 
 
-def get_devices(session, token):
+def get_devices(session, token, urls):
     """Fetch all devices bound to the account."""
-    info("Récupération des appareils via /bindings...")
-    res = session.get(f"{BASE_URL}/bindings?limit=20", headers=get_headers(token))
+    info("Recuperation des appareils via /bindings...")
+    res = session.get(
+        f"{urls['bindings']}?limit=20",
+        headers=get_headers(token),
+    )
     if res.status_code != 200:
         err(f"Erreur Bindings ({res.status_code}): {res.text}")
         return []
     return res.json().get("devices", [])
 
 
-def get_device_latest(session, token, device_id):
+def get_device_latest(session, token, device_id, urls):
     """Fetch latest reported attribute values for a device."""
-    res = session.get(
-        f"https://euapi.gizwits.com/app/devdata/{device_id}/latest",
-        headers=get_headers(token),
-    )
+    url = urls["devdata"].format(device_id=device_id)
+    res = session.get(url, headers=get_headers(token))
     if res.status_code == 200:
         return res.json()
-    warn(f"Impossible de récupérer l'état ({res.status_code}): {res.text}")
+    warn(f"Impossible de recuperer l'etat ({res.status_code}): {res.text}")
     return None
 
 
-def get_datapoints(session, token, product_key):
-    """
-    Fetch the datapoint schema for a given product_key.
-    Reveals ALL supported attributes, their types and allowed values.
-    Endpoint: GET /app/datapoint?product_key=<pk>
-    """
+def get_datapoints(session, token, product_key, urls):
+    """Fetch the datapoint schema for a given product_key."""
     res = session.get(
-        "https://euapi.gizwits.com/app/datapoint",
+        urls["datapoint"],
         headers=get_headers(token),
         params={"product_key": product_key},
     )
@@ -131,8 +140,7 @@ def save_datapoints(device, schema, output_dir):
     """Save the raw datapoint schema to a JSON file in output_dir."""
     os.makedirs(output_dir, exist_ok=True)
 
-    name = (device.get("dev_alias") or device.get("product_name") or "unknown")
-    # Build a safe filename: <name>_<product_key>.json
+    name = device.get("dev_alias") or device.get("product_name") or "unknown"
     safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in name)
     product_key = device.get("product_key", "unknown")
     filename = f"{safe_name}_{product_key}.json"
@@ -140,11 +148,11 @@ def save_datapoints(device, schema, output_dir):
 
     payload = {
         "device": {
-            "dev_alias":    device.get("dev_alias"),
+            "dev_alias": device.get("dev_alias"),
             "product_name": device.get("product_name"),
-            "did":          device.get("did"),
-            "product_key":  product_key,
-            "is_online":    device.get("is_online"),
+            "did": device.get("did"),
+            "product_key": product_key,
+            "is_online": device.get("is_online"),
         },
         "datapoints": schema,
     }
@@ -152,7 +160,7 @@ def save_datapoints(device, schema, output_dir):
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=4, ensure_ascii=False)
 
-    ok(f"Datapoints sauvegardés → {filepath}")
+    ok(f"Datapoints sauvegardes -> {filepath}")
 
 
 def describe_datapoint(dp):
@@ -164,13 +172,12 @@ def describe_datapoint(dp):
     dp_type = dp.get("type", "?")
     unit = dp.get("unit", "")
 
-    # Build allowed values / range info
     extra = ""
     if dp_type == "enum":
         extra = f"  valeurs : {dp.get('enum', [])}"
     elif dp_type in ("uint8", "uint16", "uint32", "int8", "int16", "int32"):
         lo, hi = dp.get("min", "?"), dp.get("max", "?")
-        extra = f"  range : {lo}–{hi}{(' ' + unit) if unit else ''}"
+        extra = f"  range : {lo}-{hi}{(' ' + unit) if unit else ''}"
     elif dp_type == "bool":
         extra = "  valeurs : 0 (off) / 1 (on)"
 
@@ -183,7 +190,7 @@ def describe_datapoint(dp):
     )
 
 
-def print_device_info(session, token, device, save_dir=None):
+def print_device_info(session, token, device, urls, save_dir=None):
     """Print full info for one device: metadata, live state and datapoints."""
     name = device.get("dev_alias") or device.get("product_name") or "Inconnu"
     did = device.get("did", "?")
@@ -197,68 +204,65 @@ def print_device_info(session, token, device, save_dir=None):
     print(f"{BOLD}PK     :{RESET} {DIM}{product_key}{RESET}")
     print(f"{BOLD}Statut :{RESET} {status_str}")
 
-    # ── État actuel ──────────────────────────────────────────────
-    latest = get_device_latest(session, token, did)
+    # Current state
+    latest = get_device_latest(session, token, did, urls)
     if latest:
         attrs = latest.get("attr", {})
         updated = latest.get("updated_at", "?")
-        print(f"\n  {CYAN}📡 État actuel{RESET} {DIM}(mis à jour : {updated}){RESET}")
+        print(f"\n  {CYAN}Etat actuel{RESET} {DIM}(mis a jour : {updated}){RESET}")
         if attrs:
             for key, val in attrs.items():
                 print(f"    {BOLD}{key}{RESET} = {GREEN}{val}{RESET}")
         else:
-            print(f"    {DIM}(aucune donnée disponible){RESET}")
+            print(f"    {DIM}(aucune donnee disponible){RESET}")
 
-    # ── Schéma datapoints ────────────────────────────────────────
+    # Datapoint schema
     schema = None
     if product_key:
-        print(f"\n  {CYAN}🗂️  Datapoints supportés{RESET}")
-        schema = get_datapoints(session, token, product_key)
+        print(f"\n  {CYAN}Datapoints supportes{RESET}")
+        schema = get_datapoints(session, token, product_key, urls)
         if schema:
-            # Gizwits wraps datapoints inside an "entities" list
             entities = schema.get("entities", [])
             dps = []
             for entity in entities:
                 dps.extend(entity.get("attrs", []))
-
             if dps:
                 for dp in dps:
                     print(describe_datapoint(dp))
             else:
-                # Raw dump if structure is unexpected
-                warn("Structure inattendue — dump brut :")
+                warn("Structure inattendue - dump brut :")
                 print(json.dumps(schema, indent=4, ensure_ascii=False))
         else:
             print(f"    {DIM}(datapoints non accessibles pour ce produit){RESET}")
 
-    # ── Sauvegarde JSON ──────────────────────────────────────────
+    # Save JSON
     if save_dir is not None and schema is not None:
         save_datapoints(device, schema, save_dir)
 
     print("-" * 60)
 
 
-def get_gizwits_devices(username, password, save_dir=None):
+def get_gizwits_devices(username, password, urls, save_dir=None):
     session = requests.Session()
     phone_id = str(uuid.uuid4()).upper()
 
     try:
-        provision(session, phone_id)
-        token = login(session, username, password)
+        provision(session, phone_id, urls)
+        token = login(session, username, password, urls)
         if not token:
             return
 
-        devices = get_devices(session, token)
+        devices = get_devices(session, token, urls)
         if not devices:
-            print(f"{YELLOW}ℹ️  Aucun appareil trouvé.{RESET}")
+            print(f"{YELLOW}Aucun appareil trouve.{RESET}")
             return
 
-        print(f"\n{BOLD}📱 {len(devices)} appareil(s) trouvé(s) :{RESET}\n")
+        print(f"\n{BOLD}{len(devices)} appareil(s) trouve(s) :{RESET}\n")
         for d in devices:
-            print_device_info(session, token, d, save_dir=save_dir)
+            print_device_info(session, token, d, urls, save_dir=save_dir)
 
     except Exception as e:
-        err(f"Erreur système : {e}")
+        err(f"Erreur systeme : {e}")
 
 
 if __name__ == "__main__":
@@ -266,21 +270,45 @@ if __name__ == "__main__":
     default_output = os.path.join(script_dir, "devices_datapoints")
 
     parser = argparse.ArgumentParser(
-        description="Gizwits Device Explorer — Aqua Medic / SmartDrift",
-        epilog="Usage: python aquamedic.py email password [--save]",
+        description="Gizwits Device Explorer -- Aqua Medic / SmartDrift",
+        epilog=(
+            "Exemples :\n"
+            "  python aquamedic.py user@mail.com mdp\n"
+            "  python aquamedic.py user@mail.com mdp --sim\n"
+            "  python aquamedic.py user@mail.com mdp --sim --sim-url http://192.168.100.10:8080\n"
+            "  python aquamedic.py user@mail.com mdp --save\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("username", help="Email Gizwits / Aqua Medic")
     parser.add_argument("password", help="Mot de passe")
-    parser.add_argument(
+
+    # Simulator options
+    sim_group = parser.add_argument_group("simulateur")
+    sim_group.add_argument(
+        "--sim",
+        action="store_true",
+        help="Se connecter au simulateur local au lieu du cloud Gizwits",
+    )
+    sim_group.add_argument(
+        "--sim-url",
+        default="http://localhost:8080",
+        metavar="URL",
+        help="URL de base du simulateur (defaut : http://localhost:8080)",
+    )
+
+    # Save options
+    save_group = parser.add_argument_group("sauvegarde")
+    save_group.add_argument(
         "--save",
         action="store_true",
         help=f"Enregistre les datapoints JSON dans {default_output}/",
     )
-    parser.add_argument(
+    save_group.add_argument(
         "--output-dir",
         default=default_output,
         metavar="DIR",
-        help=f"Dossier de sortie pour --save (défaut : {default_output})",
+        help=f"Dossier de sortie pour --save (defaut : {default_output})",
     )
 
     if len(sys.argv) == 1:
@@ -288,5 +316,16 @@ if __name__ == "__main__":
         sys.exit(1)
 
     args = parser.parse_args()
+
+    # Build URL map: simulator or real cloud
+    if args.sim:
+        # Ensure /app suffix is present and strip trailing slash
+        base = args.sim_url.rstrip("/")
+        api_base = base if base.endswith("/app") else f"{base}/app"
+        urls = build_urls(api_base)
+        print(f"\n{YELLOW}[SIM] Mode simulateur -> {api_base}{RESET}\n")
+    else:
+        urls = build_urls(REAL_BASE_URL)
+
     save_dir = args.output_dir if args.save else None
-    get_gizwits_devices(args.username, args.password, save_dir=save_dir)
+    get_gizwits_devices(args.username, args.password, urls, save_dir=save_dir)

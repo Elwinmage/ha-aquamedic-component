@@ -1,0 +1,16 @@
+{
+  "username": "test@aquamedic.com",
+  "password": "password123",
+  "virtual_ip": "192.168.100.10",
+  "port": 8080,
+  "devices": [
+    {
+      "type": "smartdrift",
+      "count": 2
+    },
+    {
+      "type": "dc_runner",
+      "count": 1
+    }
+  ]
+}

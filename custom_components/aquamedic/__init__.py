@@ -14,6 +14,7 @@ from .const import (
     CONF_PASSWORD,
     CONF_REGION,
     CONF_SCAN_INTERVAL,
+    CONF_SIM_HOST,
     CONF_USERNAME,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -31,9 +32,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     password = entry.data[CONF_PASSWORD]
     region = entry.data[CONF_REGION]
     interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    sim_host = entry.data.get(CONF_SIM_HOST)
 
     session = async_get_clientsession(hass)
-    client = AquaMedicClient(session, username, password, region)
+    client = AquaMedicClient(session, username, password, region, sim_host=sim_host)
 
     try:
         await client.authenticate()
