@@ -164,7 +164,7 @@ class AquaMedicLocalSwitchEntity(  # type: ignore[misc, reportIncompatibleVariab
         did: str,
         description: AquaMedicSwitchDescription,
     ) -> None:
-        super().__init__(self, coordinator)  # type: ignore[arg-type]
+        CoordinatorEntity.__init__(self, coordinator)  # type: ignore[arg-type]
         self._did = did
         self._desc = description
         self._attr_unique_id = f"{did}_{description.key}"
