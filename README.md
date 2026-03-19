@@ -20,7 +20,7 @@ Control your Aqua Medic wavemaker pumps from Home Assistant via the Gizwits clou
 
 ## Supported Devices
 
-Your device is not supported? Please contact me.
+Your device is not supported? Please [contact me](https://github.com/Elwinmage/ha-aquamedic-component/discussions/4).
 
 | Device | Internal Name | Product Key | Supported |
 |---|---|---|---|
