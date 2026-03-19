@@ -70,7 +70,7 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+          files: ./coverage.xml
 
       - name: Update coverage badge
         if: github.event_name == 'push' && matrix.ha-version == 'stable'
