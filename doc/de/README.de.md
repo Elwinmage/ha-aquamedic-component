@@ -1,3 +1,116 @@
-# Aquamedic (DE)
+# Aquamedic
 
-> TODO: translate.
+<p align="center">
+  <img src="../../icon.png"  width="50%"/>
+</p>
+
+[![HACS Badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/hacs)
+[![IoT Class](https://img.shields.io/badge/IoT%20Class-Cloud%20Polling-green?style=flat-square)](https://developers.home-assistant.io/docs/architecture_index/#branding)
+[![GH-release](https://img.shields.io/github/v/release/Elwinmage/ha-aquamedic-component.svg?style=flat-square)](https://github.com/Elwinmage/ha-aquamedic-component/releases)
+[![Ruff Status](https://github.com/Elwinmage/ha-aquamedic-component/actions/workflows/main.yml/badge.svg)](https://github.com/Elwinmage/ha-aquamedic-component/actions/workflows/main.yml)
+[![HA & HACS Validation](https://github.com/Elwinmage/ha-aquamedic-component/actions/workflows/hass_and_hacs.yml/badge.svg)](https://github.com/Elwinmage/ha-aquamedic-component/actions/workflows/hass_and_hacs.yml)
+[![Coverage](https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/badges/coverage.svg)](https://app.codecov.io/gh/Elwinmage/ha-aquamedic-component)
+[![GH-code-size](https://img.shields.io/github/languages/code-size/Elwinmage/ha-aquamedic-component.svg?color=red&style=flat-square)](https://github.com/Elwinmage/ha-aquamedic-component)
+
+# Supported Languages: [<img src="https://flagicons.lipis.dev/flags/4x3/gb.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/README.md) [<img src="https://flagicons.lipis.dev/flags/4x3/fr.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/fr/README.fr.md) [<img src="https://flagicons.lipis.dev/flags/4x3/de.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/de/README.de.md) [<img src="https://flagicons.lipis.dev/flags/4x3/es.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/es/README.es.md) [<img src="https://flagicons.lipis.dev/flags/4x3/it.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/it/README.it.md) [<img src="https://flagicons.lipis.dev/flags/4x3/pl.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/pl/README.pl.md) [<img src="https://flagicons.lipis.dev/flags/4x3/pt.svg" width="5%"/>](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/doc/pt/README.pt.md)
+
+Steuern Sie Ihre Aqua Medic Strömungspumpen über die Gizwits-Cloud-API mit Home Assistant.
+
+---
+
+## Unterstützte Geräte
+
+Ihr Gerät wird nicht unterstützt? Kontaktieren Sie mich.
+
+| Gerät | Interner Name | Produktschlüssel | Unterstützt |
+|---|---|---|---|
+| Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
+| Aqua Medic DC Runner (Rückförderpumpe) | `DC_Runner` | `8879684725d14066922374e50889f893` | ❌ |
+| Aqua Medic Reefdoser EVO | `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
+| Aqua Medic T-Controller Twin | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
+| Aqua Medic Aquarius / Spectrus | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
+
+Alle diese Geräte verwenden die Gizwits-IoT-Plattform (dasselbe Backend wie die offizielle Aqua Medic App). Die Unterstützung weiterer Geräte kann in zukünftigen Versionen hinzugefügt werden.
+
+---
+
+## Entitäten
+
+Jedes SmartDrift / EcoDrift-Gerät stellt folgende Entitäten in Home Assistant bereit.
+
+### Schalter
+
+| Entität | Beschreibung |
+|---|---|
+| **Ein/Aus** | Hauptschalter |
+| **Wellentyp** | Impulsmodus (aus) / Gezeitenmodus (ein) |
+| **Fütterungsmodus** | Aktiviert die Fütterungspause |
+| **Timer** | Aktiviert den Programmmodus |
+| **0-10V-Steuermodus** | Wenn aktiv, wird der Durchflussregler deaktiviert (Pumpe wird durch externes 0-10V-Signal gesteuert) |
+
+### Auswahllisten
+
+| Entität | Optionen |
+|---|---|
+| **Wellenmodus** | Klassische Welle · Sinuswelle · Zufallswelle · Konstantfluss |
+| **Kopplung** | Unabhängig · Master · Slave |
+
+### Zahlenwerte
+
+| Entität | Bereich | Beschreibung |
+|---|---|---|
+| **Durchfluss** | 0–100 % | Motordurchfluss (im 0-10V-Modus deaktiviert) |
+| **Frequenz** | 0–100 % | Wellenfrequenz |
+| **Fütterungsdauer** | 1–60 Min. | Dauer der Fütterungspause |
+
+### Binärsensoren (Diagnose)
+
+| Entität | Beschreibung |
+|---|---|
+| **Überstromfehler** | Motorüberstrom / Kurzschluss |
+| **Überspannungsfehler** | Motorüberspannung |
+| **Übertemperaturfehler** | Motortemperatur zu hoch |
+| **Unterspannungsfehler** | Motorunterspannung |
+| **Blockierter Rotor** | Motor blockiert / klemmt |
+| **Leerlauf-Fehler** | Pumpe läuft trocken |
+| **UART-Kommunikationsfehler** | Kommunikationsfehler Modul ↔ Hauptplatine |
+
+### Schaltfläche (Diagnose)
+
+| Entität | Beschreibung |
+|---|---|
+| **Aktualisieren** | Erzwingt eine sofortige Aktualisierung ohne auf den nächsten Abfrageintervall zu warten |
+
+---
+
+## Installation
+
+### Über HACS (empfohlen)
+
+1. In HACS zu **Integrationen → ⋮ → Benutzerdefinierte Repositories** gehen
+2. `https://github.com/Elwinmage/ha-aquamedic-component` als **Integration** hinzufügen
+3. Nach **Aqua Medic** suchen und installieren
+4. Home Assistant neu starten
+
+---
+
+## Konfiguration
+
+Gehen Sie zu **Einstellungen → Geräte & Dienste → Integration hinzufügen → Aqua Medic**.
+
+| Feld | Beschreibung |
+|---|---|
+| **E-Mail** | E-Mail-Adresse Ihres Aqua Medic-Kontos |
+| **Passwort** | Passwort Ihres Aqua Medic-Kontos |
+| **Gizwits-Server** | Regionaler Server — **Europa** für EU-Nutzer wählen |
+| **Aktualisierungsintervall** | Abfrageintervall (5–300 s, Standard 30 s) |
+
+Der richtige Server wird automatisch anhand der Home Assistant-Sprache vorausgewählt.
+
+Nach der Einrichtung kann das Aktualisierungsintervall über **Einstellungen → Geräte & Dienste → Aqua Medic → Konfigurieren** geändert werden.
+
+---
+
+## Lizenz
+
+MIT – siehe [LICENSE](../../LICENSE).
