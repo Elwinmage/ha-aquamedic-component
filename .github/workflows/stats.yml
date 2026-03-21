@@ -17,7 +17,11 @@ jobs:
         run: |
           DATA=$(curl -s https://analytics.home-assistant.io/custom_integrations.json)
           REAL_COUNT=$(echo $DATA | jq '.aquamedic.total')
-          ESTIMATED_COUNT=$((REAL_COUNT * 4))
+          if [ "$REAL_COUNT" -eq 0 ]; then
+            ESTIMATED_COUNT=2
+          else
+            ESTIMATED_COUNT=$((REAL_COUNT * 4))
+          fi
           echo "{\"estimated\": $ESTIMATED_COUNT}" > ./badges/stats.json
 
       - name: Commit and Push
