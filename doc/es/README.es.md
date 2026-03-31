@@ -1,7 +1,7 @@
 # Aquamedic
 > Parte del **[Ecosistema ReefTech Project](https://elwinmage.github.io/reeftank/es.html)**
 <p align="center">
-  <img src="icon.png" width="50%"/>
+  <img src="../../icon.png" width="50%"/>
 </p>
 
 [![HACS Badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/hacs)
