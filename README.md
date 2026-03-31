@@ -1,9 +1,8 @@
 # Aquamedic
-
+> Part of the [**ReefTech Project Ecosystem**](https://elwinmage.github.io/reeftank/)
 <p align="center">
   <img src="icon.png"  width="50%"/>
 </p>
-
 [![HACS Badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/hacs)
 [![IoT Class](https://img.shields.io/badge/IoT%20Class-Cloud%20Polling-green?style=flat-square)](https://developers.home-assistant.io/docs/architecture_index/#branding)
 [![GH-release](https://img.shields.io/github/v/release/Elwinmage/ha-aquamedic-component.svg?style=flat-square)](https://github.com/Elwinmage/ha-aquamedic-component/releases)
