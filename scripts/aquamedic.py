@@ -13,6 +13,7 @@ YELLOW = "\033[93m"
 RED = "\033[91m"
 CYAN = "\033[96m"
 DIM = "\033[2m"
+MAGENTA = "\033[95m"
 
 
 def ok(msg):
@@ -37,7 +38,26 @@ def step(msg):
 
 # ── Confirmed Identifiers ────────────────────────────────────────────────────
 APP_ID = "07452c4f036a4be3acedf8dbeef38320"
-REAL_BASE_URL = "https://euapi.gizwits.com/app"
+
+# ── Gizwits regional servers ─────────────────────────────────────────────────
+# Mirrors the GIZWITS_API_URLS dict from the HA integration (const.py).
+GIZWITS_SERVERS = {
+    "eu": {
+        "label": "Europe",
+        "base_url": "https://euapi.gizwits.com/app",
+    },
+    "us": {
+        "label": "USA / Asia",
+        "base_url": "https://usapi.gizwits.com/app",
+    },
+    "cn": {
+        "label": "China",
+        "base_url": "https://api.gizwits.com/app",
+    },
+}
+
+# Order used by auto-detection: EU first (most common for Aqua Medic users)
+AUTO_TRY_ORDER = ["eu", "us", "cn"]
 
 
 def build_urls(base: str) -> dict:
@@ -98,6 +118,66 @@ def login(session, username, password, urls):
     token = res.json().get("token")
     ok("Authenticated! Token retrieved.")
     return token
+
+
+def try_login(session, username, password, urls):
+    """Attempt login silently, return token or None (no error output)."""
+    res = session.post(
+        urls["login"],
+        headers=get_headers(),
+        json={"username": username, "password": password},
+    )
+    if res.status_code != 200:
+        return None
+    return res.json().get("token")
+
+
+def auto_detect_server(session, phone_id, username, password):
+    """Try each regional server and return (region, urls, token) on success.
+
+    Returns (None, None, None) if all regions fail.
+    """
+    step(f"\n{MAGENTA}🌍 Auto-detect: trying all Gizwits servers...{RESET}\n")
+
+    for region in AUTO_TRY_ORDER:
+        srv = GIZWITS_SERVERS[region]
+        urls = build_urls(srv["base_url"])
+        label = srv["label"]
+
+        info(f"Trying {label} ({region})...")
+
+        # Provision (non-fatal)
+        try:
+            session.post(
+                urls["provision"],
+                headers=get_headers(),
+                json={
+                    "phone_id": phone_id,
+                    "os": "Linux",
+                    "os_ver": "5.4",
+                    "sdk_version": "2.23.23.01613",
+                    "phone_model": "Python-Client",
+                },
+                timeout=10,
+            )
+        except requests.RequestException:
+            warn(f"  {label}: server unreachable, skipping.")
+            continue
+
+        # Try login
+        try:
+            token = try_login(session, username, password, urls)
+        except requests.RequestException:
+            warn(f"  {label}: connection error, skipping.")
+            continue
+
+        if token:
+            ok(f"  Success on {BOLD}{label} ({region}){RESET}")
+            return region, urls, token
+        else:
+            warn(f"  {label}: login failed (wrong region or credentials).")
+
+    return None, None, None
 
 
 def get_devices(session, token, urls):
@@ -242,15 +322,20 @@ def print_device_info(session, token, device, urls, save_dir=None):
     print("-" * 60)
 
 
-def get_gizwits_devices(username, password, urls, save_dir=None):
+def get_gizwits_devices(username, password, urls, save_dir=None, token=None):
+    """Main entry: provision, login, list devices.
+
+    If *token* is already provided (e.g. from auto-detect), skip login.
+    """
     session = requests.Session()
     phone_id = str(uuid.uuid4()).upper()
 
     try:
-        provision(session, phone_id, urls)
-        token = login(session, username, password, urls)
-        if not token:
-            return
+        if token is None:
+            provision(session, phone_id, urls)
+            token = login(session, username, password, urls)
+            if not token:
+                return
 
         devices = get_devices(session, token, urls)
         if not devices:
@@ -269,13 +354,28 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     default_output = os.path.join(script_dir, "devices_datapoints")
 
+    # Build server choices list for help text
+    server_choices = ["auto"] + list(GIZWITS_SERVERS.keys()) + ["sim"]
+    server_help_lines = [
+        "auto   - try all servers automatically (default)",
+    ]
+    for key, srv in GIZWITS_SERVERS.items():
+        server_help_lines.append(f"{key:<6s} - {srv['label']}  ({srv['base_url']})")
+    server_help_lines.append("sim    - local simulator")
+
     parser = argparse.ArgumentParser(
         description="Gizwits Device Explorer -- Aqua Medic / SmartDrift",
         epilog=(
+            "Server regions:\n"
+            + "\n".join(f"  {line}" for line in server_help_lines)
+            + "\n\n"
             "Examples:\n"
-            "  python aquamedic.py user@mail.com password\n"
-            "  python aquamedic.py user@mail.com password --sim\n"
-            "  python aquamedic.py user@mail.com password --sim --sim-url http://192.168.100.10:8080\n"
+            "  python aquamedic.py user@mail.com password                # auto-detect server\n"
+            "  python aquamedic.py user@mail.com password --server eu    # force Europe\n"
+            "  python aquamedic.py user@mail.com password --server us    # force USA/Asia\n"
+            "  python aquamedic.py user@mail.com password --server cn    # force China\n"
+            "  python aquamedic.py user@mail.com password --server sim   # local simulator\n"
+            "  python aquamedic.py user@mail.com password --server sim --sim-url http://192.168.100.10:8080\n"
             "  python aquamedic.py user@mail.com password --save\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -283,12 +383,24 @@ if __name__ == "__main__":
     parser.add_argument("username", help="Gizwits / Aqua Medic email")
     parser.add_argument("password", help="Password")
 
+    # Server selection
+    server_group = parser.add_argument_group("server")
+    server_group.add_argument(
+        "--server",
+        choices=server_choices,
+        default="auto",
+        metavar="REGION",
+        help=(
+            "Gizwits server region: " + ", ".join(server_choices) + " (default: auto)"
+        ),
+    )
+
     # Simulator options
     sim_group = parser.add_argument_group("simulator")
     sim_group.add_argument(
         "--sim",
         action="store_true",
-        help="Connect to local simulator instead of Gizwits cloud",
+        help="Shorthand for --server sim",
     )
     sim_group.add_argument(
         "--sim-url",
@@ -317,15 +429,42 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Build URL map: simulator or real cloud
-    if args.sim:
-        # Ensure /app suffix is present and strip trailing slash
+    # --sim flag is a shorthand for --server sim
+    server = "sim" if args.sim else args.server
+
+    save_dir = args.output_dir if args.save else None
+
+    # ── Simulator mode ────────────────────────────────────────────────────────
+    if server == "sim":
         base = args.sim_url.rstrip("/")
         api_base = base if base.endswith("/app") else f"{base}/app"
         urls = build_urls(api_base)
         print(f"\n{YELLOW}[SIM] Simulator mode -> {api_base}{RESET}\n")
-    else:
-        urls = build_urls(REAL_BASE_URL)
+        get_gizwits_devices(args.username, args.password, urls, save_dir=save_dir)
 
-    save_dir = args.output_dir if args.save else None
-    get_gizwits_devices(args.username, args.password, urls, save_dir=save_dir)
+    # ── Auto-detect mode ──────────────────────────────────────────────────────
+    elif server == "auto":
+        session = requests.Session()
+        phone_id = str(uuid.uuid4()).upper()
+        region, urls, token = auto_detect_server(
+            session, phone_id, args.username, args.password
+        )
+        if region is None:
+            err("Auto-detection failed: could not login on any server.")
+            err("Check your credentials or specify --server manually.")
+            sys.exit(1)
+
+        print(
+            f"\n{GREEN}🌍 Using server: {BOLD}"
+            f"{GIZWITS_SERVERS[region]['label']} ({region}){RESET}\n"
+        )
+        get_gizwits_devices(
+            args.username, args.password, urls, save_dir=save_dir, token=token
+        )
+
+    # ── Explicit region ───────────────────────────────────────────────────────
+    else:
+        srv = GIZWITS_SERVERS[server]
+        urls = build_urls(srv["base_url"])
+        print(f"\n{CYAN}🌍 Server: {BOLD}{srv['label']} ({server}){RESET}\n")
+        get_gizwits_devices(args.username, args.password, urls, save_dir=save_dir)
