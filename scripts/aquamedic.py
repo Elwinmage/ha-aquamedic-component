@@ -4,6 +4,7 @@ import uuid
 import sys
 import json
 import os
+import getpass
 
 # ── ANSI color helpers ────────────────────────────────────────────────────────
 RESET = "\033[0m"
@@ -121,15 +122,34 @@ def login(session, username, password, urls):
 
 
 def try_login(session, username, password, urls):
-    """Attempt login silently, return token or None (no error output)."""
-    res = session.post(
-        urls["login"],
-        headers=get_headers(),
-        json={"username": username, "password": password},
-    )
+    """Attempt login silently; return (token, None) on success or (None, detail) on failure.
+
+    Returning the error detail lets auto_detect_server distinguish a wrong
+    region (network error / 404) from bad credentials (Gizwits error codes
+    9004 / 9020), so the user gets an actionable message.
+    """
+    try:
+        res = session.post(
+            urls["login"],
+            headers=get_headers(),
+            json={"username": username, "password": password},
+            timeout=10,
+        )
+    except requests.RequestException as exc:
+        return None, str(exc)
+
     if res.status_code != 200:
-        return None
-    return res.json().get("token")
+        # Extract Gizwits structured error when available
+        try:
+            body = res.json()
+            detail = body.get("detail") or body.get("error_message") or res.text
+            error_code = body.get("error_code", "")
+            detail_str = f"HTTP {res.status_code} (code={error_code}): {detail}"
+        except ValueError:
+            detail_str = f"HTTP {res.status_code}: {res.text[:200]}"
+        return None, detail_str
+
+    return res.json().get("token"), None
 
 
 def auto_detect_server(session, phone_id, username, password):
@@ -164,18 +184,25 @@ def auto_detect_server(session, phone_id, username, password):
             warn(f"  {label}: server unreachable, skipping.")
             continue
 
-        # Try login
-        try:
-            token = try_login(session, username, password, urls)
-        except requests.RequestException:
-            warn(f"  {label}: connection error, skipping.")
-            continue
+        # Try login — use (token, error) tuple from updated try_login
+        token, login_error = try_login(session, username, password, urls)
 
         if token:
             ok(f"  Success on {BOLD}{label} ({region}){RESET}")
             return region, urls, token
         else:
-            warn(f"  {label}: login failed (wrong region or credentials).")
+            # Gizwits error codes 9004 (wrong password) / 9020 (unknown user):
+            # the server is reachable but the credentials are definitively wrong.
+            # Stop immediately instead of trying other regions and confusing the user.
+            is_credential_error = login_error and (
+                "9004" in login_error or "9020" in login_error
+            )
+            if is_credential_error:
+                err(f"  {label}: invalid credentials — {login_error}")
+                err("  Stopping: credentials rejected by a reachable server.")
+                return None, None, None
+            else:
+                warn(f"  {label}: login failed — {login_error}")
 
     return None, None, None
 
@@ -322,12 +349,17 @@ def print_device_info(session, token, device, urls, save_dir=None):
     print("-" * 60)
 
 
-def get_gizwits_devices(username, password, urls, save_dir=None, token=None):
+def get_gizwits_devices(
+    username, password, urls, save_dir=None, token=None, session=None
+):
     """Main entry: provision, login, list devices.
 
-    If *token* is already provided (e.g. from auto-detect), skip login.
+    If *token* is already provided (e.g. from auto-detect), the existing
+    *session* should also be passed so cookies/state are preserved.
+    If neither is provided, a new session is created and login is performed.
     """
-    session = requests.Session()
+    if session is None:
+        session = requests.Session()
     phone_id = str(uuid.uuid4()).upper()
 
     try:
@@ -381,7 +413,12 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("username", help="Gizwits / Aqua Medic email")
-    parser.add_argument("password", help="Password")
+    parser.add_argument(
+        "password",
+        nargs="?",
+        default=None,
+        help="Password (prompted securely if omitted — recommended when password contains special chars)",
+    )
 
     # Server selection
     server_group = parser.add_argument_group("server")
@@ -429,6 +466,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Resolve password: prompt securely if not provided on the command line.
+    # This avoids shell interpretation of special characters (!, $, &, etc.)
+    # that would corrupt the password before Python even receives it.
+    password = args.password or getpass.getpass(f"Password for {args.username}: ")
+
     # --sim flag is a shorthand for --server sim
     server = "sim" if args.sim else args.server
 
@@ -440,14 +482,14 @@ if __name__ == "__main__":
         api_base = base if base.endswith("/app") else f"{base}/app"
         urls = build_urls(api_base)
         print(f"\n{YELLOW}[SIM] Simulator mode -> {api_base}{RESET}\n")
-        get_gizwits_devices(args.username, args.password, urls, save_dir=save_dir)
+        get_gizwits_devices(args.username, password, urls, save_dir=save_dir)
 
     # ── Auto-detect mode ──────────────────────────────────────────────────────
     elif server == "auto":
         session = requests.Session()
         phone_id = str(uuid.uuid4()).upper()
         region, urls, token = auto_detect_server(
-            session, phone_id, args.username, args.password
+            session, phone_id, args.username, password
         )
         if region is None:
             err("Auto-detection failed: could not login on any server.")
@@ -459,7 +501,12 @@ if __name__ == "__main__":
             f"{GIZWITS_SERVERS[region]['label']} ({region}){RESET}\n"
         )
         get_gizwits_devices(
-            args.username, args.password, urls, save_dir=save_dir, token=token
+            args.username,
+            password,
+            urls,
+            save_dir=save_dir,
+            token=token,
+            session=session,
         )
 
     # ── Explicit region ───────────────────────────────────────────────────────
@@ -467,4 +514,4 @@ if __name__ == "__main__":
         srv = GIZWITS_SERVERS[server]
         urls = build_urls(srv["base_url"])
         print(f"\n{CYAN}🌍 Server: {BOLD}{srv['label']} ({server}){RESET}\n")
-        get_gizwits_devices(args.username, args.password, urls, save_dir=save_dir)
+        get_gizwits_devices(args.username, password, urls, save_dir=save_dir)
