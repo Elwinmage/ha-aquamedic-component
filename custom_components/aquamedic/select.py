@@ -95,8 +95,11 @@ class AquaMedicSelectEntity(AquaMedicEntity, SelectEntity):  # type: ignore[misc
     @property
     def available(self) -> bool:  # type: ignore[override]
         dev = self._device
-        return (
-            self.coordinator.last_update_success and dev is not None and dev.is_online
+        # is_online is bool | None: None means "unknown" → treat as available (optimistic).
+        return bool(
+            self.coordinator.last_update_success
+            and dev is not None
+            and dev.is_online is not False
         )
 
     @property

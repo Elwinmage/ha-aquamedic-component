@@ -10,8 +10,15 @@ _LOGGER = logging.getLogger(__package__)
 # ── Integration identity ──────────────────────────────────────────────────────
 DOMAIN = "aquamedic"
 
-# ── Gizwits App ID (Aqua Medic official app) ─────────────────────────────────
-GIZWITS_APP_ID = "07452c4f036a4be3acedf8dbeef38320"
+# ── Gizwits App credentials (Aqua Medic official mobile app) ──────────────────
+# Android app key — used for AEP + Gateway (primary API path).
+GIZWITS_APP_KEY = "b45f1f4f31f546378fcfaed7775c4d12"
+# iOS app id — legacy Open API fallback only.
+GIZWITS_LEGACY_APP_ID = "07452c4f036a4be3acedf8dbeef38320"
+# Backward-compatible alias kept so older tests / external references still work.
+GIZWITS_APP_ID = GIZWITS_APP_KEY
+
+GIZWITS_GATEWAY_API_KEY = "abb2243e83d341a3b75058134c236ab1"
 GIZWITS_USER_AGENT = "gizwitssuperapprn/154300000 CFNetwork/3826.500.131 Darwin/24.5.0"
 
 # ── Config entry keys ─────────────────────────────────────────────────────────
@@ -20,6 +27,18 @@ CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_SIM_HOST = "sim_host"  # only stored when region == "sim"
+
+# Token / API state persisted across HA restarts (allows session restore).
+CONF_ACCESS_TOKEN = "access_token"
+CONF_REFRESH_TOKEN = "refresh_token"
+CONF_TOKEN_EXPIRED_AT = "token_expired_at"
+CONF_TOKEN_CREATED_AT = "token_created_at"
+CONF_API_MODE = "api_mode"
+CONF_DEVICE_LIST_API = "device_list_api"
+
+# AEP device-list variants (auto-detected per account after first login).
+DEVICE_LIST_SMART_HOME = "smart_home"  # migrated / current official app accounts
+DEVICE_LIST_BINDINGS = "bindings"  # legacy AEP /app/bindings accounts
 
 # ── Simulator defaults ────────────────────────────────────────────────────────
 SIM_DEFAULT_HOST = "http://localhost:8080"
@@ -30,16 +49,48 @@ MIN_SCAN_INTERVAL = 5
 MAX_SCAN_INTERVAL = 300
 UPDATE_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
-# ── Gizwits regions and their API endpoints ───────────────────────────────────
+# ── Gizwits regions (labels for config flow) ─────────────────────────────────
 GIZWITS_REGIONS: dict[str, str] = {
-    "eu": "Europe  (euapi.gizwits.com)",
-    "us": "USA / Asia  (usapi.gizwits.com)",
-    "cn": "China  (api.gizwits.com)",
+    "eu": "Europe  (euaepapp + euapi.gizwitsapi.com)",
+    "us": "USA / Asia  (usaepapp + usapi.gizwitsapi.com)",
+    "cn": "China  (aep-app + api.gizwitsapi.com)",
     "sim": "Simulator  (local server)",
 }
 
+# ── Regional cloud endpoints (AEP + Gateway + legacy Open API) ────────────────
+GIZWITS_REGION_ENDPOINTS: dict[str, dict[str, str]] = {
+    "eu": {
+        "aep_base": "https://euaepapp.gizwits.com",
+        "gateway_base": "https://euapi.gizwitsapi.com",
+        "open_api_base": "https://euapi.gizwits.com",
+    },
+    "us": {
+        "aep_base": "https://usaepapp.gizwits.com",
+        "gateway_base": "https://usapi.gizwitsapi.com",
+        "open_api_base": "https://usapi.gizwits.com",
+    },
+    "cn": {
+        "aep_base": "https://aep-app.gizwits.com",
+        "gateway_base": "https://api.gizwitsapi.com",
+        "open_api_base": "https://api.gizwits.com",
+    },
+}
+
+# ── AEP path suffixes (same on every regional AEP host) ──────────────────────
+AEP_PATH_LOGIN_PWD = "/app/smart_home/login/pwd"
+AEP_PATH_REFRESH_TOKEN = "/app/user/refresh_token"
+AEP_PATH_BINDINGS = "/app/bindings"
+AEP_PATH_USER_DEVICES = "/app/smartHome/v2/users/devices"
+AEP_PATH_DEVDATA = "/app/devdata/{device_id}/latest"
+AEP_PATH_CONTROL = "/app/control/{device_id}"
+AEP_PATH_DATAPOINT = "/app/datapoint"
+
+# ── Gateway path suffixes (same on every regional Gateway host) ───────────────
+GATEWAY_PATH_DEVICE_CONTROL = "/v2/devices-controller/devices/{device_id}"
+GATEWAY_PATH_DEVICE_QUERY = "/v1/devices-manager/devices/{device_id}/query"
+
+# ── Legacy Open API URLs (fallback for older / non-migrated accounts) ─────────
 # Note: "sim" URLs are built at runtime from CONF_SIM_HOST (see client.py).
-# The placeholder below is overwritten when the client is instantiated.
 GIZWITS_API_URLS: dict[str, dict[str, str]] = {
     "sim": {
         "LOGIN": "http://localhost:8080/app/login",
@@ -74,6 +125,9 @@ GIZWITS_API_URLS: dict[str, dict[str, str]] = {
         "DATAPOINT": "https://api.gizwits.com/app/datapoint",
     },
 }
+
+# Backward-compatible alias (used in legacy code paths).
+LEGACY_API_URLS = GIZWITS_API_URLS
 
 # ── Home Assistant language → Gizwits region ─────────────────────────────────
 LANGUAGE_TO_REGION: dict[str, str] = {

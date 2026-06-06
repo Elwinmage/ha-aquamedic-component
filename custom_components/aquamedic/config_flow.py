@@ -35,10 +35,16 @@ from homeassistant.helpers.selector import (
 
 from .client import AquaMedicAuthError, AquaMedicClient, AquaMedicConnectionError
 from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_API_MODE,
+    CONF_DEVICE_LIST_API,
     CONF_PASSWORD,
+    CONF_REFRESH_TOKEN,
     CONF_REGION,
     CONF_SCAN_INTERVAL,
     CONF_SIM_HOST,
+    CONF_TOKEN_CREATED_AT,
+    CONF_TOKEN_EXPIRED_AT,
     CONF_USERNAME,
     DEFAULT_REGION,
     DEFAULT_SCAN_INTERVAL,
@@ -79,7 +85,14 @@ def _log_devices(devices: list[dict]) -> None:
         name = d.get("dev_alias") or d.get("product_name") or "Unknown"
         did = d.get("did", "?")
         pk = d.get("product_key", "?")
-        online = "ONLINE" if d.get("is_online") else "OFFLINE"
+        # Three-state online: True/False/None (unknown for newly detected devices).
+        raw_online = d.get("is_online")
+        if raw_online is True:
+            online = "ONLINE"
+        elif raw_online is False:
+            online = "OFFLINE"
+        else:
+            online = "UNKNOWN"
         _LOGGER.info("  • %-30s | did=%-24s | pk=%-32s | %s", name, did, pk, online)
 
 
@@ -208,7 +221,15 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         sim_host = inp.get(CONF_SIM_HOST)
 
         session = async_get_clientsession(self.hass)
-        client = AquaMedicClient(session, username, password, region, sim_host=sim_host)
+        ha_lang = self.hass.config.language or "en"
+        client = AquaMedicClient(
+            session,
+            username,
+            password,
+            region,
+            sim_host=sim_host,
+            lang=ha_lang,
+        )
 
         try:
             await client.authenticate()
@@ -260,6 +281,21 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         }
         if region == "sim" and sim_host:
             entry_data[CONF_SIM_HOST] = sim_host
+
+        # Persist AEP tokens so the next HA startup can restore the session
+        # without a full re-login (avoids unnecessary network round-trips).
+        if isinstance(client.refresh_token, str) and client.refresh_token:
+            entry_data[CONF_REFRESH_TOKEN] = client.refresh_token
+            if isinstance(client.access_token, str) and client.access_token:
+                entry_data[CONF_ACCESS_TOKEN] = client.access_token
+            if client.token_created_at is not None:
+                entry_data[CONF_TOKEN_CREATED_AT] = client.token_created_at
+            if client.token_expired_at is not None:
+                entry_data[CONF_TOKEN_EXPIRED_AT] = client.token_expired_at
+        if isinstance(client.api_mode, str):
+            entry_data[CONF_API_MODE] = client.api_mode
+        if isinstance(client.device_list_api, str):
+            entry_data[CONF_DEVICE_LIST_API] = client.device_list_api
 
         title = f"{username} (simulator)" if region == "sim" else username
         return self.async_create_entry(title=title, data=entry_data)

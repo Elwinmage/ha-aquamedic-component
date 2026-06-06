@@ -1,0 +1,129 @@
+{
+  "enum_values": {
+    "经典造浪": {
+      "en": "Classic Wave Mode",
+      "ja": "クラシックウェーブモード",
+      "zh": "经典造浪",
+      "de": "Klassische Welle"
+    },
+    "正弦造浪": {
+      "en": "Sine Wave Mode",
+      "ja": "パルスウェーブモード",
+      "zh": "正弦造浪",
+      "de": "Sinuswelle"
+    },
+    "随机造浪": {
+      "en": "Random Wave Mode",
+      "ja": "ランダムウェーブモード",
+      "zh": "随机造浪",
+      "de": "Zufällige Welle"
+    },
+    "恒流造浪": {
+      "en": "Constant wave",
+      "ja": "コンスタントウェーブ",
+      "zh": "恒流造浪",
+      "de": "Konstante Strömung"
+    },
+    "主机": {
+      "en": "Master pump",
+      "ja": "マスター",
+      "zh": "主机",
+      "de": "Master"
+    },
+    "从机": {
+      "en": "Slave pump",
+      "ja": "スレーブ",
+      "zh": "从机",
+      "de": "Slave"
+    },
+    "停机": {
+      "en": "Stop",
+      "ja": "停止",
+      "zh": "停机",
+      "de": "Stopp"
+    },
+    "喂食": {
+      "en": "Feeding",
+      "ja": "給餌",
+      "zh": "喂食",
+      "de": "Fütterung"
+    },
+    "独立": {
+      "zh": "独立",
+      "en": "Independent",
+      "de": "Unabhängig"
+    }
+  },
+  "attrs": {
+    "Flow": {
+      "en": "Flow",
+      "ja": "流量",
+      "zh": "流量",
+      "de": "Durchfluss"
+    },
+    "Frequency": {
+      "en": "Frequency",
+      "ja": "頻度",
+      "zh": "频率",
+      "de": "Frequenz"
+    },
+    "Mode": {
+      "en": "Select Mode",
+      "ja": "モードを選択",
+      "zh": "选择模式",
+      "de": "Wellenmodus"
+    },
+    "Linkage": {
+      "en": "LINKAGE",
+      "ja": "リンク",
+      "zh": "联动",
+      "de": "Verknüpfung"
+    },
+    "SwitchON": {
+      "en": "Switch",
+      "de": "Schalter",
+      "ja": "ボタン",
+      "zh": "开关",
+      "fr": "Commutateur",
+      "it": "Interruttore",
+      "es": "Cambiar",
+      "nl": "Schakelaar"
+    },
+    "FeedSwitch": {
+      "en": "Feeding Switch",
+      "ja": "給餌ボタン",
+      "zh": "喂食开关",
+      "de": "Fütterungsmodus"
+    },
+    "AutoMode": {
+      "en": "Feed Mode",
+      "ja": "給餌モード",
+      "zh": "喂食模式",
+      "de": "Automatikmodus"
+    },
+    "PulseTide": {
+      "en": "Pulse",
+      "ja": "パルス",
+      "zh": "脉冲",
+      "de": "Wellentyp"
+    },
+    "TimerON": {
+      "en": "Pause switch",
+      "ja": "一時停止ボタン",
+      "zh": "暂停开关",
+      "de": "Timer"
+    },
+    "Control0_10V": {
+      "en": "Constant Mode",
+      "ja": "コンスタントスピード",
+      "zh": "恒流",
+      "de": "0–10-V-Steuerung"
+    },
+    "FeedTime": {
+      "en": "Feeding pause time",
+      "ja": "給餌の一時停止時間",
+      "zh": "喂食暂停时间",
+      "de": "Fütterungsdauer"
+    }
+  }
+}

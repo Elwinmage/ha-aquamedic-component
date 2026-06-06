@@ -26,7 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class _SwitchKind(Enum):
     GIZWITS = auto()
-    LOCAL   = auto()
+    LOCAL = auto()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -132,6 +132,7 @@ async def async_setup_entry(
 
 # ── Gizwits switch ────────────────────────────────────────────────────────────
 
+
 class AquaMedicSwitchEntity(AquaMedicEntity, SwitchEntity):  # type: ignore[misc]
     """Boolean switch backed by a Gizwits bool attribute."""
 
@@ -148,10 +149,11 @@ class AquaMedicSwitchEntity(AquaMedicEntity, SwitchEntity):  # type: ignore[misc
     @property
     def available(self) -> bool:  # type: ignore[override]
         dev = self._device
-        return (
+        # is_online is bool | None: None means "unknown" → treat as available (optimistic).
+        return bool(
             self.coordinator.last_update_success
             and dev is not None
-            and dev.is_online
+            and dev.is_online is not False
         )
 
     @property
@@ -175,6 +177,7 @@ class AquaMedicSwitchEntity(AquaMedicEntity, SwitchEntity):  # type: ignore[misc
 
 
 # ── Local 0-10V switch ────────────────────────────────────────────────────────
+
 
 class AquaMedicLocalSwitchEntity(  # type: ignore[misc, reportIncompatibleVariableOverride]
     CoordinatorEntity[AquaMedicCoordinator], RestoreEntity, SwitchEntity
@@ -217,9 +220,14 @@ class AquaMedicLocalSwitchEntity(  # type: ignore[misc, reportIncompatibleVariab
     @cached_property
     def device_info(self) -> DeviceInfo:  # type: ignore[reportIncompatibleVariableOverride]
         from .const import DC_RUNNER_PRODUCT_KEY
+
         dev = self.coordinator.data.get(self._did) if self.coordinator.data else None
         name = dev.name if dev else self._did
-        model = "DC Runner" if (dev and dev.product_key == DC_RUNNER_PRODUCT_KEY) else "SmartDrift"
+        model = (
+            "DC Runner"
+            if (dev and dev.product_key == DC_RUNNER_PRODUCT_KEY)
+            else "SmartDrift"
+        )
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=name,

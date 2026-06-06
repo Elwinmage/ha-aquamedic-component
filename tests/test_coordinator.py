@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from custom_components.aquamedic.client import AquaMedicConnectionError
+from custom_components.aquamedic.client import AquaMedicClient, AquaMedicConnectionError
 from custom_components.aquamedic.coordinator import (
     AquaMedicCoordinator,
     AquaMedicDeviceData,
@@ -39,6 +39,21 @@ def test_device_data_offline(device_data_offline):
     d = device_data_offline
     assert d.is_online is False
     assert d.attrs     == {}
+
+
+def test_device_data_unknown_online():
+    """Missing online hints must not default to offline."""
+    device = {k: v for k, v in MOCK_DEVICE_ONLINE.items() if k != "is_online"}
+    d = AquaMedicDeviceData(device, {})
+    assert d.is_online is None
+
+
+def test_device_data_latest_overrides_offline():
+    """Gateway query can supply is_online even when device list says offline."""
+    device = {**MOCK_DEVICE_OFFLINE}
+    latest = {"attr": MOCK_ATTRS, "is_online": True, "updated_at": 1700000000}
+    d = AquaMedicDeviceData(device, latest)
+    assert d.is_online is True
 
 
 def test_device_data_fallback_name():

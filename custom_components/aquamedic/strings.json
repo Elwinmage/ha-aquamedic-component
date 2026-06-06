@@ -60,13 +60,13 @@
         "name": "Power"
       },
       "pulse_tide": {
-        "name": "Wave type"
+        "name": "Pulse"
       },
       "feed_switch": {
-        "name": "Feeding mode"
+        "name": "Feeding Switch"
       },
       "timer_on": {
-        "name": "Timer"
+        "name": "Pause switch"
       },
       "control_0_10v": {
         "name": "0-10V control mode"
@@ -76,30 +76,30 @@
       "mode": {
         "name": "Wave mode",
         "state": {
-          "classic_wave": "Classic wave",
-          "sine_wave": "Sine wave",
-          "random_wave": "Random wave",
-          "constant_flow": "Constant flow"
+          "classic_wave": "Classic Wave Mode",
+          "sine_wave": "Sine Wave Mode",
+          "random_wave": "Random Wave Mode",
+          "constant_flow": "Constant wave"
         }
       },
       "linkage": {
         "name": "Linkage",
         "state": {
           "independent": "Independent",
-          "master": "Master",
-          "slave": "Slave"
+          "master": "Master pump",
+          "slave": "Slave pump"
         }
       }
     },
     "number": {
       "flow": {
-        "name": "Flow rate"
+        "name": "Flow"
       },
       "frequency": {
         "name": "Frequency"
       },
       "feed_time": {
-        "name": "Feeding duration"
+        "name": "Feeding pause time"
       }
     },
     "binary_sensor": {

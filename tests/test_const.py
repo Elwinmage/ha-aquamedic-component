@@ -10,6 +10,9 @@ from custom_components.aquamedic.const import (
     DOMAIN,
     GIZWITS_API_URLS,
     GIZWITS_APP_ID,
+    GIZWITS_APP_KEY,
+    GIZWITS_LEGACY_APP_ID,
+    GIZWITS_REGION_ENDPOINTS,
     GIZWITS_REGIONS,
     LANGUAGE_TO_REGION,
     MAX_SCAN_INTERVAL,
@@ -24,8 +27,21 @@ def test_domain():
 
 
 def test_app_id_format():
-    assert len(GIZWITS_APP_ID) == 32
-    assert GIZWITS_APP_ID == "07452c4f036a4be3acedf8dbeef38320"
+    assert len(GIZWITS_APP_KEY) == 32
+    assert GIZWITS_APP_KEY == "b45f1f4f31f546378fcfaed7775c4d12"
+    assert GIZWITS_APP_ID == GIZWITS_APP_KEY
+    assert GIZWITS_LEGACY_APP_ID == "07452c4f036a4be3acedf8dbeef38320"
+
+
+def test_region_endpoints():
+    for region in ("eu", "us", "cn"):
+        ep = GIZWITS_REGION_ENDPOINTS[region]
+        assert "aep_base" in ep
+        assert "gateway_base" in ep
+        assert "open_api_base" in ep
+        assert ep["aep_base"].startswith("https://")
+        assert ep["gateway_base"].startswith("https://")
+        assert ep["open_api_base"].startswith("https://")
 
 
 def test_smartdrift_product_key():
