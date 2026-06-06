@@ -21,7 +21,7 @@ class AquaMedicDeviceData:
         self.did = device.get("did", "")
         self.product_key = device.get("product_key", "")
         self.name = device.get("dev_alias") or device.get("product_name") or "AquaMedic"
-        self.is_online = device.get("is_online", False)
+        self.is_online = AquaMedicClient.resolve_is_online(device, latest)
         self.attrs: dict = latest.get("attr", {})
         self.updated_at = latest.get("updated_at")
 

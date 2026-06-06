@@ -2,12 +2,128 @@
   "config": {
     "step": {
       "user": {
-        "title": "Aquamedic",
-        "data": {}
+        "title": "Aqua Medic — Anmelden",
+        "description": "Gib deine Aqua-Medic-App-Zugangsdaten (Gizwits-Konto) ein.",
+        "data": {
+          "username": "E-Mail-Adresse",
+          "password": "Passwort",
+          "region": "Gizwits-Server",
+          "scan_interval": "Aktualisierungsintervall (Sekunden)"
+        },
+        "data_description": {
+          "region": "Wähle den Server für deine Region. « Simulator » für lokale Tests.",
+          "scan_interval": "Wie oft der Gerätestatus abgefragt wird (5–300 s)."
+        }
+      },
+      "sim_host": {
+        "title": "Aqua Medic — Simulator-Host",
+        "description": "Gib die Basis-URL deines lokalen Gizwits-Simulators ein.",
+        "data": {
+          "sim_host": "Simulator-URL"
+        },
+        "data_description": {
+          "sim_host": "Basis-URL des Simulators, z. B. http://192.168.100.10:8080"
+        }
       }
     },
+    "error": {
+      "invalid_auth": "Ungültige Zugangsdaten. E-Mail und Passwort prüfen.",
+      "cannot_connect": "Gizwits-Server nicht erreichbar. Netzwerk prüfen.",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten."
+    },
     "abort": {
-      "not_implemented": "Not implemented yet."
+      "already_configured": "Dieses Konto ist bereits eingerichtet.",
+      "simulator_disabled": "Simulator-Modus ist deaktiviert (Flag-Datei fehlt)."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aqua Medic — Optionen",
+        "data": {
+          "scan_interval": "Aktualisierungsintervall (Sekunden)"
+        },
+        "data_description": {
+          "scan_interval": "Wie oft der Gerätestatus abgefragt wird (5–300 s)."
+        }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Aktualisieren"
+      }
+    },
+    "switch": {
+      "power": {
+        "name": "Ein/Aus"
+      },
+      "pulse_tide": {
+        "name": "Wellentyp"
+      },
+      "feed_switch": {
+        "name": "Fütterungsmodus"
+      },
+      "timer_on": {
+        "name": "Timer"
+      },
+      "control_0_10v": {
+        "name": "0–10-V-Steuerung"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Wellenmodus",
+        "state": {
+          "classic_wave": "Klassische Welle",
+          "sine_wave": "Sinuswelle",
+          "random_wave": "Zufällige Welle",
+          "constant_flow": "Konstante Strömung"
+        }
+      },
+      "linkage": {
+        "name": "Verknüpfung",
+        "state": {
+          "independent": "Unabhängig",
+          "master": "Master",
+          "slave": "Slave"
+        }
+      }
+    },
+    "number": {
+      "flow": {
+        "name": "Durchfluss"
+      },
+      "frequency": {
+        "name": "Frequenz"
+      },
+      "feed_time": {
+        "name": "Fütterungsdauer"
+      }
+    },
+    "binary_sensor": {
+      "fault_overcurrent": {
+        "name": "Überstrom-Fehler"
+      },
+      "fault_overvoltage": {
+        "name": "Überspannungs-Fehler"
+      },
+      "fault_overtemp": {
+        "name": "Übertemperatur-Fehler"
+      },
+      "fault_undervoltage": {
+        "name": "Unterspannungs-Fehler"
+      },
+      "fault_lockedrotor": {
+        "name": "Rotor blockiert"
+      },
+      "fault_no_liveload": {
+        "name": "Keine Last"
+      },
+      "fault_uart": {
+        "name": "UART-Kommunikationsfehler"
+      }
     }
   }
 }

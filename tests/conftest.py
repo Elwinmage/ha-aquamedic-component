@@ -69,10 +69,14 @@ def domain():
 def mock_client():
     """Return a mocked AquaMedicClient."""
     client = MagicMock()
-    client.authenticate    = AsyncMock(return_value=None)
-    client.get_devices     = AsyncMock(return_value=[MOCK_DEVICE_ONLINE])
+    client.authenticate = AsyncMock(return_value=None)
+    client.get_devices = AsyncMock(return_value=[MOCK_DEVICE_ONLINE])
     client.get_device_data = AsyncMock(return_value=MOCK_LATEST)
-    client.control_device  = AsyncMock(return_value=None)
+    client.control_device = AsyncMock(return_value=None)
+    client.api_mode = "aep"
+    client.refresh_token = None
+    client.token_created_at = None
+    client.token_expired_at = None
     return client
 
 

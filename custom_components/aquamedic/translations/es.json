@@ -9,5 +9,82 @@
     "abort": {
       "not_implemented": "Not implemented yet."
     }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Refresh"
+      }
+    },
+    "switch": {
+      "power": {
+        "name": "Power"
+      },
+      "pulse_tide": {
+        "name": "Pulse"
+      },
+      "feed_switch": {
+        "name": "Feeding Switch"
+      },
+      "timer_on": {
+        "name": "Pause switch"
+      },
+      "control_0_10v": {
+        "name": "0-10V control mode"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Wave mode",
+        "state": {
+          "classic_wave": "Classic Wave Mode",
+          "sine_wave": "Sine Wave Mode",
+          "random_wave": "Random Wave Mode",
+          "constant_flow": "Constant wave"
+        }
+      },
+      "linkage": {
+        "name": "Linkage",
+        "state": {
+          "independent": "Independent",
+          "master": "Master pump",
+          "slave": "Slave pump"
+        }
+      }
+    },
+    "number": {
+      "flow": {
+        "name": "Flow"
+      },
+      "frequency": {
+        "name": "Frequency"
+      },
+      "feed_time": {
+        "name": "Feeding pause time"
+      }
+    },
+    "binary_sensor": {
+      "fault_overcurrent": {
+        "name": "Overcurrent fault"
+      },
+      "fault_overvoltage": {
+        "name": "Overvoltage fault"
+      },
+      "fault_overtemp": {
+        "name": "Overtemperature fault"
+      },
+      "fault_undervoltage": {
+        "name": "Undervoltage fault"
+      },
+      "fault_lockedrotor": {
+        "name": "Locked rotor fault"
+      },
+      "fault_no_liveload": {
+        "name": "No load fault"
+      },
+      "fault_uart": {
+        "name": "UART communication fault"
+      }
+    }
   }
 }

@@ -530,7 +530,7 @@ def test_client_uses_sim_urls_when_region_sim():
     from custom_components.aquamedic.client import AquaMedicClient, _sim_urls
     session = MagicMock(spec=aiohttp.ClientSession)
     client = AquaMedicClient(session, "u", "p", region="sim", sim_host="http://sim:9000")
-    assert client._urls["LOGIN"] == "http://sim:9000/app/login"
+    assert client._legacy_urls["LOGIN"] == "http://sim:9000/app/login"
 
 
 def test_client_uses_standard_urls_when_no_sim_host():
@@ -540,7 +540,7 @@ def test_client_uses_standard_urls_when_no_sim_host():
     from custom_components.aquamedic.const import GIZWITS_API_URLS
     session = MagicMock(spec=aiohttp.ClientSession)
     client = AquaMedicClient(session, "u", "p", region="eu")
-    assert client._urls == GIZWITS_API_URLS["eu"]
+    assert client._legacy_urls == GIZWITS_API_URLS["eu"]
 
 
 # ── Simulator flag: disabled when file absent ─────────────────────────────────
