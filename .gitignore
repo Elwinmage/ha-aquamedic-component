@@ -43,3 +43,5 @@ dmypy.json
 
 # Simulator flag — create locally to enable the sim region in the config flow
 custom_components/aquamedic/.simulator_enabled
+
+badges/coverage.svg
