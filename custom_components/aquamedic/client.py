@@ -20,7 +20,6 @@ from .const import (
     AEP_PATH_USER_DEVICES,
     DEVICE_LIST_BINDINGS,
     DEVICE_LIST_SMART_HOME,
-    GATEWAY_PATH_DEVICE_CONTROL,
     GATEWAY_PATH_DEVICE_QUERY,
     GIZWITS_API_URLS,
     GIZWITS_APP_KEY,
@@ -203,6 +202,21 @@ class AquaMedicClient:
             "Content-Type": "application/json",
             "X-Gizwits-Application-Id": GIZWITS_APP_KEY,
             "User-Agent": GIZWITS_USER_AGENT,
+        }
+
+    def _control_headers_aep(self) -> dict[str, str]:
+        """Headers for POST /app/control on the Legacy Open API host.
+
+        Discovery finding: migrated (smart_home) accounts accept AEP JWT tokens
+        when placed in X-Gizwits-User-token — NOT in Authorization.
+        The Gateway /v2/devices-controller returns 405 for all methods.
+        The AEP host /app/control returns 404.
+        """
+        return {
+            "Content-Type": "application/json",
+            "X-Gizwits-Application-Id": GIZWITS_APP_KEY,
+            "User-Agent": GIZWITS_USER_AGENT,
+            "X-Gizwits-User-token": self._jwt or "",
         }
 
     def _legacy_headers(self, authenticated: bool = False) -> dict[str, str]:
@@ -702,46 +716,31 @@ class AquaMedicClient:
     async def _control_device_aep(self, device_id: str, attrs: dict) -> None:
         await self.ensure_valid_token()
 
+        # Body format is the same on every control path.
+        control_body = {"attrs": attrs}
+
         if self._uses_smart_home_api():
-            try:
-                await self._aep_request(
-                    "POST",
-                    self._aep_url(AEP_PATH_CONTROL.format(device_id=device_id)),
-                    json_body=self._wrap_aep(attrs),
-                )
-                _LOGGER.debug("AEP control sent to %s: %s", device_id, attrs)
-                return
-            except (AquaMedicAuthError, AquaMedicConnectionError) as exc:
-                _LOGGER.debug(
-                    "AEP control failed for %s (%s), trying gateway.",
-                    device_id,
-                    exc,
-                )
-
-            gw_url = self._gateway_url(
-                GATEWAY_PATH_DEVICE_CONTROL.format(device_id=device_id)
+            # Confirmed via endpoint discovery: migrated accounts accept
+            # POST /app/control/{id} on the Legacy Open API host
+            # (euapi.gizwits.com) with the AEP JWT placed in
+            # X-Gizwits-User-token.  The Gateway /v2/devices-controller
+            # returns 405 for all methods; the AEP /app/control returns 404.
+            oa_url = self._open_api_url(f"/app/control/{device_id}")
+            await self._request_json(
+                "POST",
+                oa_url,
+                headers=self._control_headers_aep(),
+                json_body=control_body,
+                auth_error=AquaMedicConnectionError,
             )
-            try:
-                await self._aep_request(
-                    "POST",
-                    gw_url,
-                    headers=self._gateway_headers(),
-                    json_body={"datas": [{"attrs": attrs}]},
-                )
-                _LOGGER.debug("Gateway control sent to %s: %s", device_id, attrs)
-                return
-            except (AquaMedicAuthError, AquaMedicConnectionError) as exc:
-                _LOGGER.warning(
-                    "Gateway control failed for %s (%s).",
-                    device_id,
-                    exc,
-                )
-                raise
+            _LOGGER.debug("Control sent to %s: %s", device_id, attrs)
+            return
 
+        # Bindings (non-migrated AEP) accounts: /app/control on the AEP host.
         await self._aep_request(
             "POST",
             self._aep_url(AEP_PATH_CONTROL.format(device_id=device_id)),
-            json_body=self._wrap_aep(attrs),
+            json_body=control_body,
         )
         _LOGGER.debug("AEP control sent to %s: %s", device_id, attrs)
 

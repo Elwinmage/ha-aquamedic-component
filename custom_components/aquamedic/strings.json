@@ -24,6 +24,26 @@
         "data_description": {
           "sim_host": "Base URL of the simulator, e.g. http://192.168.100.10:8080"
         }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Aqua Medic",
+        "description": "Your credentials for **{username}** are no longer valid. Please enter your new password.",
+        "data": {
+          "username": "E-mail address",
+          "password": "New password"
+        }
+      },
+      "reconfigure": {
+        "title": "Update Aqua Medic account",
+        "description": "Change the credentials or refresh interval. The server region ({region}) cannot be changed here — delete and re-add the integration to switch region.",
+        "data": {
+          "username": "E-mail address",
+          "password": "New password",
+          "scan_interval": "Refresh interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often the device state is polled (5–300 s)."
+        }
       }
     },
     "error": {
@@ -33,7 +53,10 @@
     },
     "abort": {
       "already_configured": "This account is already configured.",
-      "simulator_disabled": "The simulator mode is disabled (flag file not found)."
+      "simulator_disabled": "The simulator mode is disabled (flag file not found).",
+      "reauth_successful": "Re-authentication successful. The integration has been reloaded.",
+      "reconfigure_successful": "Configuration updated. The integration has been reloaded.",
+      "entry_not_found": "Integration entry not found."
     }
   },
   "options": {
