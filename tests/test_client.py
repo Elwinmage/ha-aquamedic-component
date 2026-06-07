@@ -420,14 +420,60 @@ async def test_get_device_data_empty_devdata(client, session):
 
 # ── control_device ────────────────────────────────────────────────────────────
 
-async def test_control_device_aep(client, session):
+async def test_control_device_aep_smart_home_uses_gateway_first(client, session):
+    """smart_home accounts must hit the Gateway controller first."""
     client._api_mode = API_MODE_AEP
     client._jwt = MOCK_TOKEN
+    client._device_list_api = DEVICE_LIST_SMART_HOME
+    session.request = MagicMock(return_value=_make_response(200, {"success": True}))
+    await client.control_device(MOCK_DID, {"SwitchON": 1})
+    call_args = session.request.call_args
+    url = call_args[0][1]
+    # Should hit the Gateway controller, not AEP /app/control.
+    assert "devices-controller" in url, f"Expected gateway controller, got: {url}"
+    assert "gizwitsapi.com" in url, f"Expected gateway host, got: {url}"
+    # session.request(method, url, **kwargs) → body is in kwargs["json"].
+    body = call_args[1].get("json", {})
+    assert "datas" in body, f"Expected Gateway body format, got: {body}"
+    assert body["datas"][0]["attrs"] == {"SwitchON": 1}
+
+
+async def test_control_device_aep_smart_home_fallback_to_aep(client, session):
+    """Gateway failure for smart_home falls back to AEP /app/control."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._device_list_api = DEVICE_LIST_SMART_HOME
+    responses = [
+        _make_response(503, {"error": "gateway unavailable"}),  # Gateway fails
+        _make_response(200, {"code": 200}),                     # AEP succeeds
+    ]
+    session.request = MagicMock(side_effect=responses)
+    await client.control_device(MOCK_DID, {"SwitchON": 1})
+    assert session.request.call_count == 2
+    # Second call must go to AEP /app/control with {"attrs": ...} body.
+    second_call = session.request.call_args_list[1]
+    second_url = second_call[0][1]
+    assert "/app/control/" in second_url
+    assert "euaepapp.gizwits.com" in second_url
+    second_body = second_call[1].get("json", {})
+    assert second_body == {"attrs": {"SwitchON": 1}}
+
+
+async def test_control_device_aep_bindings_body_format(client, session):
+    """Bindings accounts send {"attrs": …} to AEP /app/control (not _wrap_aep envelope)."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._device_list_api = DEVICE_LIST_BINDINGS
     session.request = MagicMock(return_value=_make_response(200, {"code": 200}))
     await client.control_device(MOCK_DID, {"SwitchON": 1})
     call_args = session.request.call_args
-    assert "/app/control/" in call_args[0][1]
-    assert "euaepapp.gizwits.com" in call_args[0][1]
+    url = call_args[0][1]
+    assert "/app/control/" in url
+    assert "euaepapp.gizwits.com" in url
+    body = call_args[1].get("json", {})
+    # Must NOT use AEP wrapper; must use plain {"attrs": …} like legacy.
+    assert body == {"attrs": {"SwitchON": 1}}, f"Wrong body: {body}"
+    assert "appKey" not in body, "Control body must not contain AEP envelope wrapper"
 
 
 async def test_control_device_legacy(legacy_client, session):

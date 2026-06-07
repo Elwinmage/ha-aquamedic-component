@@ -702,22 +702,15 @@ class AquaMedicClient:
     async def _control_device_aep(self, device_id: str, attrs: dict) -> None:
         await self.ensure_valid_token()
 
-        if self._uses_smart_home_api():
-            try:
-                await self._aep_request(
-                    "POST",
-                    self._aep_url(AEP_PATH_CONTROL.format(device_id=device_id)),
-                    json_body=self._wrap_aep(attrs),
-                )
-                _LOGGER.debug("AEP control sent to %s: %s", device_id, attrs)
-                return
-            except (AquaMedicAuthError, AquaMedicConnectionError) as exc:
-                _LOGGER.debug(
-                    "AEP control failed for %s (%s), trying gateway.",
-                    device_id,
-                    exc,
-                )
+        # NOTE: the /app/control endpoint (both AEP host and legacy host) expects
+        # {"attrs": {...}} — NOT the AEP envelope {"appKey":…,"data":…,"version":…}.
+        # _wrap_aep() is only used for AEP-specific operations (login, token refresh).
+        control_body = {"attrs": attrs}
 
+        if self._uses_smart_home_api():
+            # For migrated (smart_home) accounts the Gateway is the dedicated write
+            # path — try it first.  /v2/devices-controller/ is explicitly a controller
+            # (write) while /v1/devices-manager/ is a manager (read-only query).
             gw_url = self._gateway_url(
                 GATEWAY_PATH_DEVICE_CONTROL.format(device_id=device_id)
             )
@@ -731,17 +724,35 @@ class AquaMedicClient:
                 _LOGGER.debug("Gateway control sent to %s: %s", device_id, attrs)
                 return
             except (AquaMedicAuthError, AquaMedicConnectionError) as exc:
+                _LOGGER.debug(
+                    "Gateway control failed for %s (%s), falling back to AEP /app/control.",
+                    device_id,
+                    exc,
+                )
+
+            # Fallback: AEP /app/control with the correct {"attrs": …} body.
+            try:
+                await self._aep_request(
+                    "POST",
+                    self._aep_url(AEP_PATH_CONTROL.format(device_id=device_id)),
+                    json_body=control_body,
+                )
+                _LOGGER.debug("AEP control sent to %s: %s", device_id, attrs)
+                return
+            except (AquaMedicAuthError, AquaMedicConnectionError) as exc:
                 _LOGGER.warning(
-                    "Gateway control failed for %s (%s).",
+                    "AEP control also failed for %s (%s).",
                     device_id,
                     exc,
                 )
                 raise
 
+        # Bindings (legacy-style AEP) accounts: /app/control on the AEP host
+        # uses the same {"attrs": …} body as the Open API — only headers differ.
         await self._aep_request(
             "POST",
             self._aep_url(AEP_PATH_CONTROL.format(device_id=device_id)),
-            json_body=self._wrap_aep(attrs),
+            json_body=control_body,
         )
         _LOGGER.debug("AEP control sent to %s: %s", device_id, attrs)
 
