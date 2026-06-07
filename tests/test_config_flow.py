@@ -575,3 +575,83 @@ async def test_sim_step_aborts_when_flag_absent(hass, register_config_flow):
     result = await flow.async_step_sim_host()
     assert result["type"] == "abort"
     assert result["reason"] == "simulator_disabled"
+
+
+# ── _simulator_enabled() True path (L95) ─────────────────────────────────────
+
+def test_simulator_enabled_returns_true_when_flag_exists(simulator_flag):
+    """L95: _SIM_FLAG.exists() path when flag file is present."""
+    from custom_components.aquamedic.config_flow import _simulator_enabled
+    assert _simulator_enabled() is True
+
+
+def test_simulator_enabled_returns_false_when_flag_absent():
+    """_SIM_FLAG.exists() returns False when flag file is absent."""
+    from custom_components.aquamedic.config_flow import _SIM_FLAG, _simulator_enabled
+    _SIM_FLAG.unlink(missing_ok=True)
+    assert _simulator_enabled() is False
+
+
+# ── Token persistence in _async_try_connect (L288-298) ───────────────────────
+
+async def test_flow_persists_aep_tokens_in_entry(hass, register_config_flow):
+    """L288-298: tokens stored in config entry when client has refresh_token."""
+    with (
+        patch("custom_components.aquamedic.config_flow.AquaMedicClient") as MockClient,
+        patch(
+            "custom_components.aquamedic.config_flow.async_get_clientsession",
+            return_value=MagicMock(),
+        ),
+    ):
+        mock_instance = MockClient.return_value
+        mock_instance.authenticate  = AsyncMock()
+        mock_instance.get_devices   = AsyncMock(return_value=[])
+        mock_instance.refresh_token  = "rt-stored"
+        mock_instance.access_token   = "jwt-stored"
+        mock_instance.token_created_at = 1700000000
+        mock_instance.token_expired_at = 1700086400
+        mock_instance.api_mode       = "aep"
+        mock_instance.device_list_api = "smart_home"
+
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], VALID_INPUT
+        )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    data = result["data"]
+    assert data.get("refresh_token") == "rt-stored"
+    assert data.get("access_token")  == "jwt-stored"
+    assert data.get("api_mode")      == "aep"
+    assert data.get("device_list_api") == "smart_home"
+
+
+async def test_flow_skips_token_persistence_when_no_refresh_token(hass, register_config_flow):
+    """No token keys in entry when refresh_token is None."""
+    with (
+        patch("custom_components.aquamedic.config_flow.AquaMedicClient") as MockClient,
+        patch(
+            "custom_components.aquamedic.config_flow.async_get_clientsession",
+            return_value=MagicMock(),
+        ),
+    ):
+        mock_instance = MockClient.return_value
+        mock_instance.authenticate  = AsyncMock()
+        mock_instance.get_devices   = AsyncMock(return_value=[])
+        mock_instance.refresh_token  = None
+        mock_instance.access_token   = None
+        mock_instance.api_mode       = "aep"
+        mock_instance.device_list_api = "smart_home"
+
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], VALID_INPUT
+        )
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert "refresh_token" not in result["data"]
+    assert "access_token"  not in result["data"]

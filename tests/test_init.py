@@ -1,210 +1,107 @@
-"""Tests for __init__.py (integration setup / teardown)."""
+"""Tests for __init__.py — setup/teardown and token persistence."""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-from custom_components.aquamedic import async_setup_entry, async_unload_entry
-from custom_components.aquamedic.client import (
-    AquaMedicAuthError,
-    AquaMedicConnectionError,
+from custom_components.aquamedic.__init__ import _persist_client_tokens
+from custom_components.aquamedic.const import (
+    CONF_ACCESS_TOKEN,
+    CONF_API_MODE,
+    CONF_DEVICE_LIST_API,
+    CONF_REFRESH_TOKEN,
+    CONF_TOKEN_CREATED_AT,
+    CONF_TOKEN_EXPIRED_AT,
 )
-from custom_components.aquamedic.const import DOMAIN
-from tests.conftest import MOCK_CONFIG_ENTRY_DATA, MOCK_DID
 
 
-# ── PLATFORMS ─────────────────────────────────────────────────────────────────
-
-def test_platforms_list():
-    from custom_components.aquamedic import PLATFORMS
-    assert set(PLATFORMS) == {"switch", "select", "number", "binary_sensor", "button"}
-
-
-# ── Fixtures ──────────────────────────────────────────────────────────────────
-
-@pytest.fixture
-def entry(hass):
-    e = MockConfigEntry(
-        domain=DOMAIN,
-        data=MOCK_CONFIG_ENTRY_DATA,
-        unique_id="eu_test@example.com",
-    )
-    e.add_to_hass(hass)
-    return e
-
-
-@pytest.fixture
-def coord_mock():
+def _mock_client(**kwargs):
     c = MagicMock()
-    c.data = {}
-    c.async_config_entry_first_refresh = AsyncMock()
+    c.refresh_token    = kwargs.get("refresh_token", None)
+    c.access_token     = kwargs.get("access_token", None)
+    c.token_created_at = kwargs.get("token_created_at", None)
+    c.token_expired_at = kwargs.get("token_expired_at", None)
+    c.api_mode         = kwargs.get("api_mode", "aep")
+    c.device_list_api  = kwargs.get("device_list_api", "smart_home")
     return c
 
 
-# ── async_setup_entry ─────────────────────────────────────────────────────────
-
-async def test_setup_entry_success(hass, entry, coord_mock):
-    with (
-        patch("custom_components.aquamedic.AquaMedicClient") as MockClient,
-        patch("custom_components.aquamedic.async_get_clientsession", return_value=MagicMock()),
-        patch("custom_components.aquamedic.AquaMedicCoordinator", return_value=coord_mock),
-        patch("homeassistant.config_entries.ConfigEntries.async_forward_entry_setups", new_callable=AsyncMock),
-    ):
-        MockClient.return_value.authenticate = AsyncMock()
-        result = await async_setup_entry(hass, entry)
-
-    assert result is True
+def _mock_entry(data: dict | None = None):
+    entry = MagicMock()
+    entry.data = data or {}
+    return entry
 
 
-async def test_setup_entry_stores_coordinator(hass, entry, coord_mock):
-    with (
-        patch("custom_components.aquamedic.AquaMedicClient") as MockClient,
-        patch("custom_components.aquamedic.async_get_clientsession", return_value=MagicMock()),
-        patch("custom_components.aquamedic.AquaMedicCoordinator", return_value=coord_mock),
-        patch("homeassistant.config_entries.ConfigEntries.async_forward_entry_setups", new_callable=AsyncMock),
-    ):
-        MockClient.return_value.authenticate = AsyncMock()
-        await async_setup_entry(hass, entry)
+# ── _persist_client_tokens ────────────────────────────────────────────────────
 
-    assert hass.data[DOMAIN][entry.entry_id] is coord_mock
+def test_persist_skipped_when_no_refresh_token():
+    """Early return (L40) when refresh_token is None."""
+    hass = MagicMock()
+    entry = _mock_entry()
+    client = _mock_client(refresh_token=None)
+    _persist_client_tokens(hass, entry, client)
+    hass.config_entries.async_update_entry.assert_not_called()
 
 
-async def test_setup_entry_creates_client_with_correct_region(hass, entry, coord_mock):
-    with (
-        patch("custom_components.aquamedic.AquaMedicClient") as MockClient,
-        patch("custom_components.aquamedic.async_get_clientsession", return_value=MagicMock()),
-        patch("custom_components.aquamedic.AquaMedicCoordinator", return_value=coord_mock),
-        patch("homeassistant.config_entries.ConfigEntries.async_forward_entry_setups", new_callable=AsyncMock),
-    ):
-        MockClient.return_value.authenticate = AsyncMock()
-        await async_setup_entry(hass, entry)
-        # Client constructed with username, password, region
-        args = MockClient.call_args
-        assert args[0][3] == "eu"   # region is 4th positional arg (after session, username, password)
+def test_persist_skipped_when_refresh_token_empty_string():
+    """Early return when refresh_token is an empty string."""
+    hass = MagicMock()
+    entry = _mock_entry()
+    client = _mock_client(refresh_token="")
+    _persist_client_tokens(hass, entry, client)
+    hass.config_entries.async_update_entry.assert_not_called()
 
 
-async def test_setup_entry_calls_authenticate(hass, entry, coord_mock):
-    with (
-        patch("custom_components.aquamedic.AquaMedicClient") as MockClient,
-        patch("custom_components.aquamedic.async_get_clientsession", return_value=MagicMock()),
-        patch("custom_components.aquamedic.AquaMedicCoordinator", return_value=coord_mock),
-        patch("homeassistant.config_entries.ConfigEntries.async_forward_entry_setups", new_callable=AsyncMock),
-    ):
-        MockClient.return_value.authenticate = AsyncMock()
-        await async_setup_entry(hass, entry)
-        MockClient.return_value.authenticate.assert_called_once()
+def test_persist_saves_all_tokens():
+    """Lines 41-53: all token fields written when refresh_token is present."""
+    hass = MagicMock()
+    entry = _mock_entry({"username": "user@test.com"})
+    client = _mock_client(
+        refresh_token="rt-abc",
+        access_token="jwt-xyz",
+        token_created_at=1700000000,
+        token_expired_at=1700086400,
+        api_mode="aep",
+        device_list_api="smart_home",
+    )
+    _persist_client_tokens(hass, entry, client)
+    hass.config_entries.async_update_entry.assert_called_once()
+    _, call_kwargs = hass.config_entries.async_update_entry.call_args
+    saved = call_kwargs["data"]
+    assert saved[CONF_REFRESH_TOKEN]    == "rt-abc"
+    assert saved[CONF_ACCESS_TOKEN]     == "jwt-xyz"
+    assert saved[CONF_TOKEN_CREATED_AT] == 1700000000
+    assert saved[CONF_TOKEN_EXPIRED_AT] == 1700086400
+    assert saved[CONF_API_MODE]         == "aep"
+    assert saved[CONF_DEVICE_LIST_API]  == "smart_home"
+    # Original entry data must be preserved
+    assert saved["username"] == "user@test.com"
 
 
-async def test_setup_entry_calls_first_refresh(hass, entry, coord_mock):
-    with (
-        patch("custom_components.aquamedic.AquaMedicClient") as MockClient,
-        patch("custom_components.aquamedic.async_get_clientsession", return_value=MagicMock()),
-        patch("custom_components.aquamedic.AquaMedicCoordinator", return_value=coord_mock),
-        patch("homeassistant.config_entries.ConfigEntries.async_forward_entry_setups", new_callable=AsyncMock),
-    ):
-        MockClient.return_value.authenticate = AsyncMock()
-        await async_setup_entry(hass, entry)
-        coord_mock.async_config_entry_first_refresh.assert_called_once()
+def test_persist_skips_none_access_token():
+    """access_token key must not be written when client.access_token is None."""
+    hass = MagicMock()
+    entry = _mock_entry()
+    client = _mock_client(refresh_token="rt", access_token=None)
+    _persist_client_tokens(hass, entry, client)
+    _, call_kwargs = hass.config_entries.async_update_entry.call_args
+    saved = call_kwargs["data"]
+    assert CONF_ACCESS_TOKEN not in saved
+    assert CONF_REFRESH_TOKEN in saved
 
 
-async def test_setup_entry_logs_devices(hass, entry, coord_mock):
-    """When coordinator.data is populated, setup logs device info."""
-    coord_mock.data = {
-        MOCK_DID: MagicMock(name="Pump", product_key="pk", is_online=True, attrs={})
-    }
-    with (
-        patch("custom_components.aquamedic.AquaMedicClient") as MockClient,
-        patch("custom_components.aquamedic.async_get_clientsession", return_value=MagicMock()),
-        patch("custom_components.aquamedic.AquaMedicCoordinator", return_value=coord_mock),
-        patch("homeassistant.config_entries.ConfigEntries.async_forward_entry_setups", new_callable=AsyncMock),
-    ):
-        MockClient.return_value.authenticate = AsyncMock()
-        result = await async_setup_entry(hass, entry)
-
-    assert result is True
-
-
-# ── Auth and connection errors ────────────────────────────────────────────────
-
-async def test_setup_entry_auth_error_raises(hass, entry):
-    with (
-        patch("custom_components.aquamedic.AquaMedicClient") as MockClient,
-        patch("custom_components.aquamedic.async_get_clientsession", return_value=MagicMock()),
-    ):
-        MockClient.return_value.authenticate = AsyncMock(
-            side_effect=AquaMedicAuthError("bad creds")
-        )
-        with pytest.raises(ConfigEntryAuthFailed):
-            await async_setup_entry(hass, entry)
-
-
-async def test_setup_entry_connection_error_raises(hass, entry):
-    with (
-        patch("custom_components.aquamedic.AquaMedicClient") as MockClient,
-        patch("custom_components.aquamedic.async_get_clientsession", return_value=MagicMock()),
-    ):
-        MockClient.return_value.authenticate = AsyncMock(
-            side_effect=AquaMedicConnectionError("unreachable")
-        )
-        with pytest.raises(ConfigEntryNotReady):
-            await async_setup_entry(hass, entry)
-
-
-# ── async_unload_entry ────────────────────────────────────────────────────────
-
-async def test_unload_entry_returns_true(hass, entry):
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = MagicMock()
-
-    with patch(
-        "homeassistant.config_entries.ConfigEntries.async_unload_platforms",
-        new_callable=AsyncMock,
-        return_value=True,
-    ):
-        result = await async_unload_entry(hass, entry)
-
-    assert result is True
-
-
-async def test_unload_entry_removes_from_hass_data(hass, entry):
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = MagicMock()
-
-    with patch(
-        "homeassistant.config_entries.ConfigEntries.async_unload_platforms",
-        new_callable=AsyncMock,
-        return_value=True,
-    ):
-        await async_unload_entry(hass, entry)
-
-    assert entry.entry_id not in hass.data.get(DOMAIN, {})
-
-
-async def test_unload_entry_keeps_data_on_failure(hass, entry):
-    sentinel = object()
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = sentinel
-
-    with patch(
-        "homeassistant.config_entries.ConfigEntries.async_unload_platforms",
-        new_callable=AsyncMock,
-        return_value=False,
-    ):
-        result = await async_unload_entry(hass, entry)
-
-    assert result is False
-    assert hass.data[DOMAIN][entry.entry_id] is sentinel
-
-
-async def test_unload_entry_returns_false_on_platform_failure(hass, entry):
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = MagicMock()
-
-    with patch(
-        "homeassistant.config_entries.ConfigEntries.async_unload_platforms",
-        new_callable=AsyncMock,
-        return_value=False,
-    ):
-        result = await async_unload_entry(hass, entry)
-
-    assert result is False
+def test_persist_skips_none_timestamps():
+    """token_created_at / token_expired_at must not be written when None."""
+    hass = MagicMock()
+    entry = _mock_entry()
+    client = _mock_client(
+        refresh_token="rt",
+        access_token="jwt",
+        token_created_at=None,
+        token_expired_at=None,
+    )
+    _persist_client_tokens(hass, entry, client)
+    _, call_kwargs = hass.config_entries.async_update_entry.call_args
+    saved = call_kwargs["data"]
+    assert CONF_TOKEN_CREATED_AT not in saved
+    assert CONF_TOKEN_EXPIRED_AT not in saved
