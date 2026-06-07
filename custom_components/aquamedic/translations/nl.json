@@ -4,10 +4,33 @@
       "user": {
         "title": "Aquamedic",
         "data": {}
+      },
+      "reauth_confirm": {
+        "title": "Aqua Medic opnieuw verifiëren",
+        "description": "Uw inloggegevens voor **{username}** zijn niet langer geldig. Voer uw nieuw wachtwoord in.",
+        "data": {
+          "username": "E-mailadres",
+          "password": "Nieuw wachtwoord"
+        }
+      },
+      "reconfigure": {
+        "title": "Aqua Medic-account bijwerken",
+        "description": "Wijzig de inloggegevens of het bijwerkinterval. De server ({region}) kan hier niet worden gewijzigd — verwijder de integratie en voeg deze opnieuw toe om van regio te wisselen.",
+        "data": {
+          "username": "E-mailadres",
+          "password": "Nieuw wachtwoord",
+          "scan_interval": "Bijwerkinterval (seconden)"
+        },
+        "data_description": {
+          "scan_interval": "Hoe vaak de apparaatstatus wordt opgevraagd (5–300 s)."
+        }
       }
     },
     "abort": {
-      "not_implemented": "Not implemented yet."
+      "not_implemented": "Not implemented yet.",
+      "reauth_successful": "Herverificatie geslaagd. De integratie is herladen.",
+      "reconfigure_successful": "Configuratie bijgewerkt. De integratie is herladen.",
+      "entry_not_found": "Integratie-invoer niet gevonden."
     }
   },
   "entity": {

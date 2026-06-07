@@ -24,6 +24,26 @@
         "data_description": {
           "sim_host": "URL de base du simulateur, ex. http://192.168.100.10:8080"
         }
+      },
+      "reauth_confirm": {
+        "title": "Aqua Medic — Ré-authentification",
+        "description": "Vos identifiants pour **{username}** ne sont plus valides. Veuillez saisir votre nouveau mot de passe.",
+        "data": {
+          "username": "Adresse e-mail",
+          "password": "Nouveau mot de passe"
+        }
+      },
+      "reconfigure": {
+        "title": "Aqua Medic — Mettre à jour le compte",
+        "description": "Modifiez les identifiants ou l'intervalle d'actualisation. Le serveur ({region}) ne peut pas être changé ici — supprimez l'intégration et recréez-la pour changer de région.",
+        "data": {
+          "username": "Adresse e-mail",
+          "password": "Nouveau mot de passe",
+          "scan_interval": "Intervalle d'actualisation (secondes)"
+        },
+        "data_description": {
+          "scan_interval": "Fréquence d'interrogation de l'état de l'appareil (5–300 s)."
+        }
       }
     },
     "error": {
@@ -33,7 +53,10 @@
     },
     "abort": {
       "already_configured": "Ce compte est déjà configuré.",
-      "simulator_disabled": "Le mode simulateur est désactivé (fichier flag absent)."
+      "simulator_disabled": "Le mode simulateur est désactivé (fichier flag absent).",
+      "reauth_successful": "Ré-authentification réussie. L'intégration a été rechargée.",
+      "reconfigure_successful": "Configuration mise à jour. L'intégration a été rechargée.",
+      "entry_not_found": "Entrée d'intégration introuvable."
     }
   },
   "options": {

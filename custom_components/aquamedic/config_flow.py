@@ -150,6 +150,7 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._user_input: dict[str, Any] = {}
+        self._reauth_entry: ConfigEntry | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -299,6 +300,197 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         title = f"{username} (simulator)" if region == "sim" else username
         return self.async_create_entry(title=title, data=entry_data)
+
+    # ── Re-authentication flow ────────────────────────────────────────────────
+
+    async def async_step_reauth(
+        self, entry_data: dict[str, Any]
+    ) -> config_entries.ConfigFlowResult:
+        """Triggered by HA when stored credentials are no longer valid."""
+        # context["entry_id"] is optional in ConfigFlowContext — use .get()
+        entry_id = self.context.get("entry_id") or ""
+        self._reauth_entry = self.hass.config_entries.async_get_entry(entry_id)
+        if self._reauth_entry is None:
+            return self.async_abort(reason="entry_not_found")
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Show re-auth form; on success, update the config entry and reload."""
+        errors: dict[str, str] = {}
+        # _reauth_entry is guaranteed non-None — async_step_reauth aborts before
+        # calling this method when the entry is not found.
+        entry = self._reauth_entry
+        assert entry is not None  # noqa: S101
+        current_username = entry.data.get(CONF_USERNAME, "")
+
+        if user_input is not None:
+            username = user_input[CONF_USERNAME].strip()
+            password = user_input[CONF_PASSWORD]
+            region = entry.data[CONF_REGION]
+            sim_host = entry.data.get(CONF_SIM_HOST)
+
+            session = async_get_clientsession(self.hass)
+            ha_lang = self.hass.config.language or "en"
+            client = AquaMedicClient(
+                session,
+                username,
+                password,
+                region,
+                sim_host=sim_host,
+                lang=ha_lang,
+            )
+            try:
+                await client.authenticate()
+            except AquaMedicAuthError:
+                errors["base"] = "invalid_auth"
+            except AquaMedicConnectionError:
+                errors["base"] = "cannot_connect"
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Unexpected error during re-authentication")
+                errors["base"] = "unknown"
+
+            if not errors:
+                new_data: dict[str, Any] = {
+                    **entry.data,
+                    CONF_USERNAME: username,
+                    CONF_PASSWORD: password,
+                }
+                # Refresh tokens from the new login.
+                if isinstance(client.refresh_token, str) and client.refresh_token:
+                    new_data[CONF_REFRESH_TOKEN] = client.refresh_token
+                    if isinstance(client.access_token, str) and client.access_token:
+                        new_data[CONF_ACCESS_TOKEN] = client.access_token
+                    if client.token_created_at is not None:
+                        new_data[CONF_TOKEN_CREATED_AT] = client.token_created_at
+                    if client.token_expired_at is not None:
+                        new_data[CONF_TOKEN_EXPIRED_AT] = client.token_expired_at
+                if isinstance(client.api_mode, str):
+                    new_data[CONF_API_MODE] = client.api_mode
+                if isinstance(client.device_list_api, str):
+                    new_data[CONF_DEVICE_LIST_API] = client.device_list_api
+
+                # entry is non-None here (guarded above)
+                self.hass.config_entries.async_update_entry(entry, data=new_data)  # type: ignore[arg-type]
+                await self.hass.config_entries.async_reload(entry.entry_id)  # type: ignore[union-attr]
+                return self.async_abort(reason="reauth_successful")
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_USERNAME, default=current_username): TextSelector(
+                    TextSelectorConfig(
+                        type=TextSelectorType.EMAIL, autocomplete="email"
+                    )
+                ),
+                vol.Required(CONF_PASSWORD): TextSelector(
+                    TextSelectorConfig(
+                        type=TextSelectorType.PASSWORD,
+                        autocomplete="current-password",
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"username": current_username},
+        )
+
+    # ── Reconfigure flow (manual credential + interval update) ────────────────
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Allow the user to update credentials and scan interval in place."""
+        entry_id = self.context.get("entry_id") or ""
+        entry = self.hass.config_entries.async_get_entry(entry_id)
+        if entry is None:
+            return self.async_abort(reason="entry_not_found")
+        errors: dict[str, str] = {}
+        current = entry.data
+        region = current.get(CONF_REGION, "eu")
+        sim_host = current.get(CONF_SIM_HOST)
+
+        if user_input is not None:
+            username = user_input[CONF_USERNAME].strip()
+            password = user_input[CONF_PASSWORD]
+            interval = int(user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
+
+            session = async_get_clientsession(self.hass)
+            ha_lang = self.hass.config.language or "en"
+            client = AquaMedicClient(
+                session,
+                username,
+                password,
+                region,
+                sim_host=sim_host,
+                lang=ha_lang,
+            )
+            try:
+                await client.authenticate()
+            except AquaMedicAuthError:
+                errors["base"] = "invalid_auth"
+            except AquaMedicConnectionError:
+                errors["base"] = "cannot_connect"
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Unexpected error during reconfiguration")
+                errors["base"] = "unknown"
+
+            if not errors:
+                new_data = {
+                    **current,
+                    CONF_USERNAME: username,
+                    CONF_PASSWORD: password,
+                    CONF_SCAN_INTERVAL: interval,
+                }
+                if isinstance(client.refresh_token, str) and client.refresh_token:
+                    new_data[CONF_REFRESH_TOKEN] = client.refresh_token
+                    if isinstance(client.access_token, str) and client.access_token:
+                        new_data[CONF_ACCESS_TOKEN] = client.access_token
+                    if client.token_created_at is not None:
+                        new_data[CONF_TOKEN_CREATED_AT] = client.token_created_at
+                    if client.token_expired_at is not None:
+                        new_data[CONF_TOKEN_EXPIRED_AT] = client.token_expired_at
+                if isinstance(client.api_mode, str):
+                    new_data[CONF_API_MODE] = client.api_mode
+                if isinstance(client.device_list_api, str):
+                    new_data[CONF_DEVICE_LIST_API] = client.device_list_api
+
+                # entry is non-None here (guarded at function start)
+                self.hass.config_entries.async_update_entry(entry, data=new_data)
+                await self.hass.config_entries.async_reload(entry.entry_id)
+                return self.async_abort(reason="reconfigure_successful")
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_USERNAME,
+                    default=current.get(CONF_USERNAME, ""),
+                ): TextSelector(
+                    TextSelectorConfig(
+                        type=TextSelectorType.EMAIL, autocomplete="email"
+                    )
+                ),
+                vol.Required(CONF_PASSWORD): TextSelector(
+                    TextSelectorConfig(
+                        type=TextSelectorType.PASSWORD,
+                        autocomplete="current-password",
+                    )
+                ),
+                vol.Required(
+                    CONF_SCAN_INTERVAL,
+                    default=current.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                ): _interval_selector(),
+            }
+        )
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"region": region},
+        )
 
     @staticmethod
     @callback

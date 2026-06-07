@@ -4,10 +4,33 @@
       "user": {
         "title": "Aquamedic",
         "data": {}
+      },
+      "reauth_confirm": {
+        "title": "Aqua Medic — Reautenticação",
+        "description": "As suas credenciais para **{username}** já não são válidas. Introduza a sua nova palavra-passe.",
+        "data": {
+          "username": "Endereço de e-mail",
+          "password": "Nova palavra-passe"
+        }
+      },
+      "reconfigure": {
+        "title": "Aqua Medic — Atualizar conta",
+        "description": "Altere as credenciais ou o intervalo de atualização. O servidor ({region}) não pode ser alterado aqui — elimine a integração e adicione-a novamente para mudar de região.",
+        "data": {
+          "username": "Endereço de e-mail",
+          "password": "Nova palavra-passe",
+          "scan_interval": "Intervalo de atualização (segundos)"
+        },
+        "data_description": {
+          "scan_interval": "Frequência de consulta do estado do dispositivo (5–300 s)."
+        }
       }
     },
     "abort": {
-      "not_implemented": "Not implemented yet."
+      "not_implemented": "Not implemented yet.",
+      "reauth_successful": "Reautenticação bem-sucedida. A integração foi recarregada.",
+      "reconfigure_successful": "Configuração atualizada. A integração foi recarregada.",
+      "entry_not_found": "Entrada de integração não encontrada."
     }
   },
   "entity": {
