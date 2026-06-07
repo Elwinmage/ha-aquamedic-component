@@ -419,61 +419,51 @@ async def test_get_device_data_empty_devdata(client, session):
 
 
 # ── control_device ────────────────────────────────────────────────────────────
+# Discovery: smart_home accounts → POST euapi.gizwits.com/app/control/{did}
+#            with JWT in X-Gizwits-User-token (not Authorization).
+# Gateway /v2/devices-controller returns 405 for all methods.
+# AEP host /app/control returns 404.
 
-async def test_control_device_aep_smart_home_uses_gateway_first(client, session):
-    """smart_home accounts must hit the Gateway controller first."""
+async def test_control_device_aep_smart_home_uses_open_api(client, session):
+    """smart_home: POST to Legacy Open API host with JWT as X-Gizwits-User-token."""
     client._api_mode = API_MODE_AEP
     client._jwt = MOCK_TOKEN
     client._device_list_api = DEVICE_LIST_SMART_HOME
-    session.request = MagicMock(return_value=_make_response(200, {"success": True}))
+    session.request = MagicMock(return_value=_make_response(200, {}))
     await client.control_device(MOCK_DID, {"SwitchON": 1})
     call_args = session.request.call_args
+    assert call_args[0][0] == "POST"
     url = call_args[0][1]
-    # Should hit the Gateway controller, not AEP /app/control.
-    assert "devices-controller" in url, f"Expected gateway controller, got: {url}"
-    assert "gizwitsapi.com" in url, f"Expected gateway host, got: {url}"
-    # session.request(method, url, **kwargs) → body is in kwargs["json"].
+    assert "euapi.gizwits.com" in url, f"Expected Open API host, got: {url}"
+    assert "/app/control/" in url
+    # Body must be {"attrs": ...}, not AEP wrapper.
     body = call_args[1].get("json", {})
-    assert "datas" in body, f"Expected Gateway body format, got: {body}"
-    assert body["datas"][0]["attrs"] == {"SwitchON": 1}
+    assert body == {"attrs": {"SwitchON": 1}}, f"Wrong body: {body}"
+    # JWT must be in X-Gizwits-User-token, not Authorization.
+    headers = call_args[1].get("headers", {})
+    assert headers.get("X-Gizwits-User-token") == MOCK_TOKEN, (
+        f"JWT must be in X-Gizwits-User-token, got headers: {headers}"
+    )
+    assert "Authorization" not in headers, (
+        "Authorization header must not be set for Open API control"
+    )
 
 
-async def test_control_device_aep_smart_home_fallback_to_aep(client, session):
-    """Gateway failure for smart_home falls back to AEP /app/control."""
-    client._api_mode = API_MODE_AEP
-    client._jwt = MOCK_TOKEN
-    client._device_list_api = DEVICE_LIST_SMART_HOME
-    responses = [
-        _make_response(503, {"error": "gateway unavailable"}),  # Gateway fails
-        _make_response(200, {"code": 200}),                     # AEP succeeds
-    ]
-    session.request = MagicMock(side_effect=responses)
-    await client.control_device(MOCK_DID, {"SwitchON": 1})
-    assert session.request.call_count == 2
-    # Second call must go to AEP /app/control with {"attrs": ...} body.
-    second_call = session.request.call_args_list[1]
-    second_url = second_call[0][1]
-    assert "/app/control/" in second_url
-    assert "euaepapp.gizwits.com" in second_url
-    second_body = second_call[1].get("json", {})
-    assert second_body == {"attrs": {"SwitchON": 1}}
-
-
-async def test_control_device_aep_bindings_body_format(client, session):
-    """Bindings accounts send {"attrs": …} to AEP /app/control (not _wrap_aep envelope)."""
+async def test_control_device_aep_bindings_uses_aep_host(client, session):
+    """Bindings accounts → POST /app/control on AEP host (euaepapp.gizwits.com)."""
     client._api_mode = API_MODE_AEP
     client._jwt = MOCK_TOKEN
     client._device_list_api = DEVICE_LIST_BINDINGS
     session.request = MagicMock(return_value=_make_response(200, {"code": 200}))
     await client.control_device(MOCK_DID, {"SwitchON": 1})
     call_args = session.request.call_args
+    assert call_args[0][0] == "POST"
     url = call_args[0][1]
+    assert "euaepapp.gizwits.com" in url, f"Expected AEP host, got: {url}"
     assert "/app/control/" in url
-    assert "euaepapp.gizwits.com" in url
     body = call_args[1].get("json", {})
-    # Must NOT use AEP wrapper; must use plain {"attrs": …} like legacy.
     assert body == {"attrs": {"SwitchON": 1}}, f"Wrong body: {body}"
-    assert "appKey" not in body, "Control body must not contain AEP envelope wrapper"
+    assert "appKey" not in body, "No AEP envelope in control body"
 
 
 async def test_control_device_legacy(legacy_client, session):
