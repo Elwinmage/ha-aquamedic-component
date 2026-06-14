@@ -112,6 +112,14 @@
           "master": "Master pump",
           "slave": "Slave pump"
         }
+      },
+      "auto_mode": {
+        "name": "Timer mode",
+        "state": {
+          "stop": "Stop",
+          "auto": "Auto",
+          "feeding": "Feeding"
+        }
       }
     },
     "number": {
@@ -123,6 +131,15 @@
       },
       "feed_time": {
         "name": "Feeding pause time"
+      },
+      "motor_speed": {
+        "name": "Motor speed"
+      },
+      "auto_gears": {
+        "name": "Timer speed"
+      },
+      "auto_feed_time": {
+        "name": "Timer feeding time"
       }
     },
     "binary_sensor": {

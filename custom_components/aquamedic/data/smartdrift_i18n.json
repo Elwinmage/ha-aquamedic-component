@@ -52,6 +52,18 @@
       "zh": "独立",
       "en": "Independent",
       "de": "Unabhängig"
+    },
+    "自动": {
+      "en": "Auto",
+      "fr": "Automatique",
+      "de": "Automatik",
+      "es": "Automático",
+      "it": "Automatico",
+      "nl": "Automatisch",
+      "pl": "Automatyczny",
+      "pt": "Automático",
+      "zh": "自动",
+      "ja": "自動"
     }
   },
   "attrs": {
@@ -124,6 +136,42 @@
       "ja": "給餌の一時停止時間",
       "zh": "喂食暂停时间",
       "de": "Fütterungsdauer"
+    },
+    "Motor_Speed": {
+      "en": "Motor speed",
+      "fr": "Vitesse du moteur",
+      "de": "Motordrehzahl",
+      "es": "Velocidad del motor",
+      "it": "Velocità del motore",
+      "nl": "Motorsnelheid",
+      "pl": "Prędkość silnika",
+      "pt": "Velocidade do motor",
+      "zh": "电机转速",
+      "ja": "モーター速度"
+    },
+    "AutoGears": {
+      "en": "Timer speed",
+      "fr": "Vitesse programmée",
+      "de": "Timer-Drehzahl",
+      "es": "Velocidad programada",
+      "it": "Velocità programmata",
+      "nl": "Timersnelheid",
+      "pl": "Prędkość harmonogramu",
+      "pt": "Velocidade programada",
+      "zh": "定时档位",
+      "ja": "タイマー速度"
+    },
+    "AutoFeedTime": {
+      "en": "Timer feeding time",
+      "fr": "Durée d'alimentation programmée",
+      "de": "Timer-Fütterungsdauer",
+      "es": "Tiempo de alimentación programado",
+      "it": "Durata alimentazione programmata",
+      "nl": "Timer-voedertijd",
+      "pl": "Czas karmienia harmonogramu",
+      "pt": "Tempo de alimentação programado",
+      "zh": "定时喂食时间",
+      "ja": "タイマー給餌時間"
     }
   }
 }

@@ -73,6 +73,14 @@
           "master": "Master pump",
           "slave": "Slave pump"
         }
+      },
+      "auto_mode": {
+        "name": "Modalità timer",
+        "state": {
+          "stop": "Arresto",
+          "auto": "Automatico",
+          "feeding": "Alimentazione"
+        }
       }
     },
     "number": {
@@ -84,6 +92,15 @@
       },
       "feed_time": {
         "name": "Feeding pause time"
+      },
+      "motor_speed": {
+        "name": "Velocità del motore"
+      },
+      "auto_gears": {
+        "name": "Velocità programmata"
+      },
+      "auto_feed_time": {
+        "name": "Durata alimentazione programmata"
       }
     },
     "binary_sensor": {

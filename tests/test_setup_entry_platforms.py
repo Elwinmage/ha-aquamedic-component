@@ -205,12 +205,14 @@ async def test_switch_setup_entry_empty_coordinator(hass, coordinator):
     assert len(added) == 0
 
 
-# ── DC Runner device fixture ──────────────────────────────────────────────────
+# ── DC Runner (return pump) & DC Skimmer fixtures ─────────────────────────────
 
 DC_RUNNER_DID = "dc_runner_test_did"
+DC_SKIMMER_DID = "dc_skimmer_test_did"
+
 
 def _add_dc_runner(coordinator):
-    """Add a DC Runner device to coordinator.data."""
+    """Add a DC Runner return pump to coordinator.data."""
     from custom_components.aquamedic.const import DC_RUNNER_PRODUCT_KEY
     from custom_components.aquamedic.coordinator import AquaMedicDeviceData
     dc_device = {
@@ -222,10 +224,23 @@ def _add_dc_runner(coordinator):
     coordinator.data[DC_RUNNER_DID] = AquaMedicDeviceData(dc_device, MOCK_LATEST)
 
 
-# ── switch: DC Runner branch ──────────────────────────────────────────────────
+def _add_dc_skimmer(coordinator):
+    """Add a DC Skimmer to coordinator.data."""
+    from custom_components.aquamedic.const import DC_SKIMMER_PRODUCT_KEY
+    from custom_components.aquamedic.coordinator import AquaMedicDeviceData
+    dc_device = {
+        **MOCK_DEVICE_ONLINE,
+        "did": DC_SKIMMER_DID,
+        "product_key": DC_SKIMMER_PRODUCT_KEY,
+        "dev_alias": "DC Skimmer Test",
+    }
+    coordinator.data[DC_SKIMMER_DID] = AquaMedicDeviceData(dc_device, MOCK_LATEST)
+
+
+# ── switch ────────────────────────────────────────────────────────────────────
 
 async def test_switch_setup_entry_dc_runner(hass, coordinator):
-    """DC Runner branch creates 2 gizwits switches + 1 local switch = 3."""
+    """DC Runner return pump: power + feed_switch + control_0_10v = 3."""
     from custom_components.aquamedic.switch import async_setup_entry
 
     coordinator.data = {}
@@ -234,27 +249,39 @@ async def test_switch_setup_entry_dc_runner(hass, coordinator):
     added: list = []
     await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
 
-    # DC Runner: SwitchON + FeedSwitch + control_0_10v = 3
     assert len(added) == 3
 
 
-async def test_switch_setup_entry_dc_runner_and_smartdrift(hass, coordinator):
-    """Both device types together yield 5 + 3 = 8 entities."""
+async def test_switch_setup_entry_dc_skimmer(hass, coordinator):
+    """DC Skimmer: power + feed_switch + timer_on + control_0_10v = 4."""
     from custom_components.aquamedic.switch import async_setup_entry
 
-    _add_dc_runner(coordinator)
+    coordinator.data = {}
+    _add_dc_skimmer(coordinator)
     entry = _make_entry(hass, coordinator)
     added: list = []
     await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
 
-    # SmartDrift: 5, DC Runner: 3
-    assert len(added) == 8
+    assert len(added) == 4
 
 
-# ── number: DC Runner branch ──────────────────────────────────────────────────
+async def test_switch_setup_entry_all_device_types(hass, coordinator):
+    """SmartDrift 5 + DC Runner 3 + DC Skimmer 4 = 12."""
+    from custom_components.aquamedic.switch import async_setup_entry
+
+    _add_dc_runner(coordinator)
+    _add_dc_skimmer(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert len(added) == 12
+
+
+# ── number ────────────────────────────────────────────────────────────────────
 
 async def test_number_setup_entry_dc_runner(hass, coordinator):
-    """DC Runner branch creates 1 number entity (flow 30-100%)."""
+    """DC Runner return pump: single flow control = 1."""
     from custom_components.aquamedic.number import async_setup_entry
 
     coordinator.data = {}
@@ -264,11 +291,43 @@ async def test_number_setup_entry_dc_runner(hass, coordinator):
     await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
 
     assert len(added) == 1
+    assert added[0].native_min_value == 30
 
 
-async def test_number_setup_entry_dc_runner_min_value(hass, coordinator):
-    """DC Runner flow entity has min=30."""
+async def test_number_setup_entry_dc_skimmer(hass, coordinator):
+    """DC Skimmer: Motor_Speed + FeedTime + AutoGears + AutoFeedTime = 4."""
     from custom_components.aquamedic.number import async_setup_entry
+
+    coordinator.data = {}
+    _add_dc_skimmer(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert len(added) == 4
+    # motor_speed is first and enforces min=30
+    assert added[0].entity_description.key == "motor_speed"
+    assert added[0].native_min_value == 30
+
+
+async def test_number_setup_entry_all_device_types(hass, coordinator):
+    """SmartDrift 3 + DC Runner 1 + DC Skimmer 4 = 8."""
+    from custom_components.aquamedic.number import async_setup_entry
+
+    _add_dc_runner(coordinator)
+    _add_dc_skimmer(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert len(added) == 8
+
+
+# ── select / binary_sensor / button (DC Skimmer only) ─────────────────────────
+
+async def test_select_setup_entry_dc_runner_none(hass, coordinator):
+    """DC Runner return pump exposes no select."""
+    from custom_components.aquamedic.select import async_setup_entry
 
     coordinator.data = {}
     _add_dc_runner(coordinator)
@@ -276,16 +335,70 @@ async def test_number_setup_entry_dc_runner_min_value(hass, coordinator):
     added: list = []
     await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
 
-    assert added[0].native_min_value == 30
+    assert len(added) == 0
 
 
-async def test_number_setup_entry_dc_runner_and_smartdrift(hass, coordinator):
-    """Both device types together: 3 SmartDrift + 1 DC Runner = 4."""
-    from custom_components.aquamedic.number import async_setup_entry
+async def test_select_setup_entry_dc_skimmer(hass, coordinator):
+    """DC Skimmer creates 1 select entity (auto_mode)."""
+    from custom_components.aquamedic.select import async_setup_entry
 
+    coordinator.data = {}
+    _add_dc_skimmer(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert len(added) == 1
+    assert added[0].entity_description.key == "auto_mode"
+
+
+async def test_binary_sensor_setup_entry_dc_runner_none(hass, coordinator):
+    """DC Runner return pump exposes no fault sensors."""
+    from custom_components.aquamedic.binary_sensor import async_setup_entry
+
+    coordinator.data = {}
     _add_dc_runner(coordinator)
     entry = _make_entry(hass, coordinator)
     added: list = []
     await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
 
-    assert len(added) == 4
+    assert len(added) == 0
+
+
+async def test_binary_sensor_setup_entry_dc_skimmer(hass, coordinator):
+    """DC Skimmer exposes the same 7 fault sensors as SmartDrift."""
+    from custom_components.aquamedic.binary_sensor import async_setup_entry
+
+    coordinator.data = {}
+    _add_dc_skimmer(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert len(added) == 7
+
+
+async def test_button_setup_entry_dc_runner_none(hass, coordinator):
+    """DC Runner return pump gets no refresh button."""
+    from custom_components.aquamedic.button import async_setup_entry
+
+    coordinator.data = {}
+    _add_dc_runner(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert len(added) == 0
+
+
+async def test_button_setup_entry_dc_skimmer(hass, coordinator):
+    """DC Skimmer gets a refresh button."""
+    from custom_components.aquamedic.button import async_setup_entry
+
+    coordinator.data = {}
+    _add_dc_skimmer(coordinator)
+    entry = _make_entry(hass, coordinator)
+    added: list = []
+    await async_setup_entry(hass, entry, lambda entities, **kw: added.extend(entities))
+
+    assert len(added) == 1

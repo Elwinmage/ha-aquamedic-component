@@ -11,7 +11,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SMARTDRIFT_PRODUCT_KEY
+from .const import DC_SKIMMER_PRODUCT_KEY, DOMAIN, SMARTDRIFT_PRODUCT_KEY
 from .coordinator import AquaMedicCoordinator
 from .entity import AquaMedicEntity
 
@@ -30,6 +30,15 @@ LINKAGE_RAW_MAP: dict[str, str] = {
     "独立": "independent",
     "主机": "master",
     "从机": "slave",
+}
+
+# DC Runner AutoMode (timer mode): 停机=stop, 自动=auto, 喂食=feeding.
+# Index order matches the device enum so the value can also be read as an int.
+DC_RUNNER_AUTO_MODE_OPTIONS = ["stop", "auto", "feeding"]
+DC_RUNNER_AUTO_MODE_RAW_MAP: dict[str, str] = {
+    "停机": "stop",
+    "自动": "auto",
+    "喂食": "feeding",
 }
 
 
@@ -64,6 +73,21 @@ SELECT_DESCRIPTIONS: tuple[AquaMedicSelectDescription, ...] = (
 )
 
 
+# DC Skimmer exposes a single AutoMode (timer mode) select.
+DC_SKIMMER_SELECT_DESCRIPTIONS: tuple[AquaMedicSelectDescription, ...] = (
+    AquaMedicSelectDescription(
+        key="auto_mode",
+        translation_key="auto_mode",
+        attr="AutoMode",
+        options=DC_RUNNER_AUTO_MODE_OPTIONS,
+        options_list=DC_RUNNER_AUTO_MODE_OPTIONS,
+        raw_map=DC_RUNNER_AUTO_MODE_RAW_MAP,
+        icon="mdi:clock-outline",
+        entity_category=EntityCategory.CONFIG,
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -72,9 +96,13 @@ async def async_setup_entry(
     coordinator: AquaMedicCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[SelectEntity] = []
     for did, dev in (coordinator.data or {}).items():
-        if dev.product_key != SMARTDRIFT_PRODUCT_KEY:
+        if dev.product_key == SMARTDRIFT_PRODUCT_KEY:
+            descs = SELECT_DESCRIPTIONS
+        elif dev.product_key == DC_SKIMMER_PRODUCT_KEY:
+            descs = DC_SKIMMER_SELECT_DESCRIPTIONS
+        else:
             continue
-        for desc in SELECT_DESCRIPTIONS:
+        for desc in descs:
             entities.append(AquaMedicSelectEntity(coordinator, did, desc))
     async_add_entities(entities)
 

@@ -29,6 +29,7 @@ Ihr Gerät wird nicht unterstützt? Kontaktieren Sie mich.
 |---|---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | <img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/3cc74acc-aab7-4bbf-a386-51155cf11943" /> | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
 | Aqua Medic DC Runner x.1 / x.2 / x.3 (Rückförderpumpe) | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
+| Aqua Medic DC Runner (Abschäumerpumpe) | | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic Reefdoser EVO | <img width="458" height="458" alt="image" src="https://github.com/user-attachments/assets/b5e98032-9cea-4647-9443-18d4d68a275d" />| `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
@@ -95,7 +96,7 @@ Alle diese Geräte verwenden die Gizwits-IoT-Plattform (dasselbe Backend wie die
 |---|---|
 | **Aktualisieren** | Erzwingt eine sofortige Aktualisierung |
 
-### DC Runner
+### DC Runner (Rückförderpumpe)
 
 > 🧪 Unterstützung ist implementiert, aber **noch nicht auf echter Hardware getestet**. Feedback willkommen.
 
@@ -105,7 +106,7 @@ Alle diese Geräte verwenden die Gizwits-IoT-Plattform (dasselbe Backend wie die
 |---|---|
 | **Ein/Aus** | Hauptschalter |
 | **Fütterungsmodus** | Unterbricht den Durchfluss für 10 Minuten |
-| **0-10V-Steuermodus** | Wenn aktiv, wird der Durchfluss durch externes 0-10V-Signal gesteuert |
+| **0-10V-Steuermodus** | Wenn aktiv, wird der Geschwindigkeitsregler deaktiviert (Pumpe über externes 0-10V-Signal gesteuert) |
 
 #### Zahlenwerte
 
@@ -113,13 +114,53 @@ Alle diese Geräte verwenden die Gizwits-IoT-Plattform (dasselbe Backend wie die
 |---|---|---|
 | **Durchfluss** | 30–100 % | Pumpengeschwindigkeit (Minimum 30 % — darunter kann der Motor blockieren) |
 
+### DC Skimmer (DC-Runner-Abschäumerpumpe)
+
+> ✅ Basiert auf einer echten Datapoint-Aufnahme des Geräts.
+
+#### Schalter
+
+| Entität | Beschreibung |
+|---|---|
+| **Ein/Aus** | Hauptschalter |
+| **Fütterungsmodus** | Aktiviert die Fütterungspause |
+| **Timer** | Aktiviert das Zeitprogramm |
+| **0-10V-Steuermodus** | Wenn aktiv, wird der Geschwindigkeitsregler deaktiviert (Pumpe über externes 0-10V-Signal gesteuert) |
+
+#### Auswahllisten
+
+| Entität | Optionen |
+|---|---|
+| **Zeitmodus** | Stopp · Automatik · Fütterung |
+
+#### Zahlenwerte
+
+| Entität | Bereich | Beschreibung |
+|---|---|---|
+| **Motordrehzahl** | 30–100 % | Pumpengeschwindigkeit (Minimum 30 % — darunter kann der Motor blockieren; im 0-10V-Modus deaktiviert) |
+| **Fütterungsdauer** | 1–60 Min. | Dauer der Fütterungspause |
+| **Timer-Drehzahl** | 0–100 % | Im Zeitprogramm verwendete Drehzahl |
+| **Timer-Fütterungsdauer** | 1–60 Min. | Im Zeitprogramm verwendete Fütterungsdauer |
+
 #### Binärsensoren (Diagnose)
 
 | Entität | Beschreibung |
 |---|---|
-| **Trocklauf-Fehler** | Automatische Abschaltung wenn 2 Min. kein Wasser erkannt |
-| **Blockierter Rotor** | Mechanische Blockierung erkannt |
-| **Spannungsfehler** | Versorgungsspannung außerhalb des Bereichs |
+| **Überstromfehler** | Motorüberstrom / Kurzschluss |
+| **Überspannungsfehler** | Motorüberspannung |
+| **Übertemperaturfehler** | Motortemperatur zu hoch |
+| **Unterspannungsfehler** | Motorunterspannung |
+| **Blockierter Rotor** | Motor blockiert / klemmt |
+| **Leerlauf-Fehler** | Pumpe läuft trocken |
+| **UART-Kommunikationsfehler** | Kommunikationsfehler Modul ↔ Hauptplatine |
+
+#### Schaltfläche (Diagnose)
+
+| Entität | Beschreibung |
+|---|---|
+| **Aktualisieren** | Erzwingt eine sofortige Aktualisierung |
+
+> **Zum 0-10V-Steuermodus:** Jeder DC-Runner-Controller besitzt einen physischen 0-10V-Eingang für einen externen Aquariencomputer (Apex, GHL, …). Es ist ein Hardware-Anschluss, kein Cloud-Wert, und erscheint daher nicht als Geräteattribut — der Schalter *0-10V-Steuermodus* ist ein lokales Home-Assistant-Flag, das den Geschwindigkeitsregler deaktiviert, während die Pumpe extern gesteuert wird. Laut Aqua-Medic-Handbuch muss die Pumpe im 0-10V-Modus mit **≥ 60 %** laufen.
 
 ---
 
@@ -137,6 +178,32 @@ Gehen Sie zu **Einstellungen → Geräte & Dienste → Integration hinzufügen �
 Der richtige Server wird automatisch anhand der Home Assistant-Sprache vorausgewählt.
 
 Nach der Einrichtung kann das Aktualisierungsintervall über **Einstellungen → Geräte & Dienste → Aqua Medic → Konfigurieren** geändert werden.
+
+---
+
+## Entwicklung
+
+### Lokaler Simulator
+
+Ein Gizwits-Cloud-Simulator (`scripts/gizwits_simulator.py`) ermöglicht das Testen der Integration ohne echte Hardware oder Cloud-Zugang. Konfiguration über `scripts/gizwits_sim_config.json`:
+
+| Schlüssel | Beschreibung |
+|---|---|
+| `username` / `password` | Anmeldedaten, die die Integration verwenden muss |
+| `virtual_ip` | IP, an die der Simulator bindet (`127.0.0.1` überspringt die virtuelle IP) |
+| `interface` | Netzwerkschnittstelle für die virtuelle IP (optional; wird sonst automatisch über die Standardroute erkannt, Fallback `eth0`; überschreibbar mit `-i/--interface`) |
+| `port` | Port (Standard `8080`) |
+| `devices` | Liste von `{ "type": ..., "count": N }`; Typen: `smartdrift`, `dc_runner` (Rückförderpumpe), `dc_skimmer` |
+
+Start: `sudo python3 scripts/gizwits_simulator.py` (Root nötig für die virtuelle IP).
+
+Damit die Region **Simulator** im Konfigurationsdialog erscheint, lege die lokale Flag-Datei an (git-ignoriert, niemals committen):
+
+```bash
+cp custom_components/aquamedic/simulator_enabled.example custom_components/aquamedic/.simulator_enabled
+```
+
+Starte Home Assistant neu, füge die Integration hinzu und wähle *Simulator*; danach werden die Simulator-URL (Standard `http://localhost:8080`) und die Zugangsdaten abgefragt.
 
 ---
 

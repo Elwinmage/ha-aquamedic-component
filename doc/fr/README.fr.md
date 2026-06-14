@@ -29,6 +29,7 @@ Votre appareil n'est pas supporté ? Contactez-moi.
 |---|---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | <img width="368" height="1024" alt="image" src="https://github.com/user-attachments/assets/3cc74acc-aab7-4bbf-a386-51155cf11943" /> | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
 | Aqua Medic DC Runner x.1 / x.2 / x.3 (pompe de remontée) | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
+| Aqua Medic DC Runner (pompe d'écumeur) | | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic Reefdoser EVO | <img width="458" height="458" alt="image" src="https://github.com/user-attachments/assets/b5e98032-9cea-4647-9443-18d4d68a275d" />| `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
@@ -95,7 +96,7 @@ Tous ces appareils utilisent la plateforme IoT Gizwits (même backend que l'appl
 |---|---|
 | **Actualiser** | Force une actualisation immédiate sans attendre le prochain cycle d'interrogation |
 
-### DC Runner
+### DC Runner (pompe de remontée)
 
 > 🧪 Le support est implémenté mais **pas encore testé sur matériel réel**. Retours bienvenus.
 
@@ -105,7 +106,7 @@ Tous ces appareils utilisent la plateforme IoT Gizwits (même backend que l'appl
 |---|---|
 | **Alimentation** | Marche/arrêt principal |
 | **Mode nourrissage** | Coupe le débit pendant 10 minutes |
-| **Mode contrôle 0-10V** | Quand activé, le débit est piloté par signal externe 0-10V |
+| **Mode contrôle 0-10V** | Quand activé, désactive le curseur de vitesse (pompe pilotée par signal externe 0-10V) |
 
 #### Nombres
 
@@ -113,13 +114,53 @@ Tous ces appareils utilisent la plateforme IoT Gizwits (même backend que l'appl
 |---|---|---|
 | **Débit** | 30–100 % | Vitesse de la pompe (minimum 30 % — en dessous le moteur peut caler) |
 
+### DC Skimmer (pompe d'écumeur DC Runner)
+
+> ✅ Basé sur une capture réelle des datapoints de l'appareil.
+
+#### Interrupteurs
+
+| Entité | Description |
+|---|---|
+| **Alimentation** | Marche/arrêt principal |
+| **Mode nourrissage** | Active la pause de nourrissage |
+| **Minuterie** | Active le programme horaire |
+| **Mode contrôle 0-10V** | Quand activé, désactive le curseur de vitesse (pompe pilotée par signal externe 0-10V) |
+
+#### Listes de sélection
+
+| Entité | Options |
+|---|---|
+| **Mode programmé** | Arrêt · Automatique · Nourrissage |
+
+#### Nombres
+
+| Entité | Plage | Description |
+|---|---|---|
+| **Vitesse du moteur** | 30–100 % | Vitesse de la pompe (minimum 30 % — en dessous le moteur peut caler ; désactivé en mode 0-10V) |
+| **Durée de nourrissage** | 1–60 min | Durée de la pause de nourrissage |
+| **Vitesse programmée** | 0–100 % | Vitesse utilisée par le programme horaire |
+| **Durée de nourrissage programmée** | 1–60 min | Durée de nourrissage utilisée par le programme horaire |
+
 #### Capteurs binaires (diagnostic)
 
 | Entité | Description |
 |---|---|
-| **Défaut marche à vide** | Arrêt automatique si pas d'eau détectée pendant 2 min |
-| **Défaut rotor bloqué** | Obstruction mécanique détectée |
-| **Défaut tension** | Tension d'alimentation hors plage |
+| **Défaut surintensité** | Surintensité moteur / court-circuit |
+| **Défaut surtension** | Surtension moteur |
+| **Défaut surchauffe** | Température moteur trop élevée |
+| **Défaut sous-tension** | Sous-tension moteur |
+| **Défaut rotor bloqué** | Moteur coincé / bloqué |
+| **Défaut marche à vide** | Pompe tournant à sec |
+| **Défaut communication UART** | Erreur de communication module ↔ carte principale |
+
+#### Bouton (diagnostic)
+
+| Entité | Description |
+|---|---|
+| **Actualiser** | Force une actualisation immédiate des données |
+
+> **À propos du contrôle 0-10V :** chaque contrôleur DC Runner possède une entrée physique 0-10V destinée à un contrôleur d'aquarium externe (Apex, GHL, …). C'est un port matériel, pas une valeur cloud : il n'apparaît donc pas comme attribut de l'appareil — l'interrupteur *Mode contrôle 0-10V* est un drapeau local Home Assistant qui désactive le curseur de vitesse pendant que la pompe est pilotée en externe. D'après le manuel Aqua Medic, en mode 0-10V la pompe doit tourner à **≥ 60 %**.
 
 ---
 
@@ -137,6 +178,32 @@ Aller dans **Paramètres → Appareils et services → Ajouter une intégration 
 Le serveur correct est présélectionné automatiquement en fonction de la langue de Home Assistant.
 
 Après configuration, l'intervalle d'actualisation peut être modifié via **Paramètres → Appareils et services → Aqua Medic → Configurer**.
+
+---
+
+## Développement
+
+### Simulateur local
+
+Un simulateur du cloud Gizwits (`scripts/gizwits_simulator.py`) permet de tester l'intégration sans matériel réel ni accès au cloud. Il se configure via `scripts/gizwits_sim_config.json` :
+
+| Clé | Description |
+|---|---|
+| `username` / `password` | Identifiants que l'intégration doit utiliser pour se connecter |
+| `virtual_ip` | IP sur laquelle le simulateur écoute (`127.0.0.1` ignore la configuration d'IP virtuelle) |
+| `interface` | Interface réseau pour l'IP virtuelle (optionnel ; si omis, l'interface de la route par défaut est auto-détectée, avec repli sur `eth0` ; surchargeable avec `-i/--interface`) |
+| `port` | Port d'écoute (défaut `8080`) |
+| `devices` | Liste de `{ "type": ..., "count": N }` ; types disponibles : `smartdrift`, `dc_runner` (pompe de remontée), `dc_skimmer` |
+
+Lancement : `sudo python3 scripts/gizwits_simulator.py` (root requis pour ajouter l'IP virtuelle).
+
+Pour faire apparaître la région **Simulateur** dans le config flow, créez le fichier-drapeau local (git-ignoré, ne jamais le commiter) :
+
+```bash
+cp custom_components/aquamedic/simulator_enabled.example custom_components/aquamedic/.simulator_enabled
+```
+
+Redémarrez Home Assistant, ajoutez l'intégration et sélectionnez *Simulateur* ; l'URL du simulateur (défaut `http://localhost:8080`) et les identifiants du fichier de config vous seront alors demandés.
 
 ---
 

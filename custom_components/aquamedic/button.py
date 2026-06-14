@@ -10,7 +10,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SMARTDRIFT_PRODUCT_KEY
+from .const import DC_SKIMMER_PRODUCT_KEY, DOMAIN, SMARTDRIFT_PRODUCT_KEY
 from .coordinator import AquaMedicCoordinator
 from .entity import AquaMedicEntity
 
@@ -32,7 +32,10 @@ async def async_setup_entry(
     coordinator: AquaMedicCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[ButtonEntity] = []
     for did, dev in (coordinator.data or {}).items():
-        if dev.product_key != SMARTDRIFT_PRODUCT_KEY:
+        if (
+            dev.product_key != SMARTDRIFT_PRODUCT_KEY
+            and dev.product_key != DC_SKIMMER_PRODUCT_KEY
+        ):
             continue
         entities.append(AquaMedicRefreshButton(coordinator, did, REFRESH_DESCRIPTION))
     async_add_entities(entities)
