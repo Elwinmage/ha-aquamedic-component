@@ -23,12 +23,18 @@ Config format (gizwits_sim_config.json):
         "username": "test@example.com",
         "password": "secret",
         "virtual_ip": "192.168.100.10",
+        "interface": "eth0",
         "port": 8080,
         "devices": [
             {"type": "smartdrift", "count": 2},
-            {"type": "dc_runner",  "count": 1}
+            {"type": "dc_runner",  "count": 1},
+            {"type": "dc_skimmer", "count": 1}
         ]
     }
+
+    "interface" is optional: if omitted, the default-route interface is
+    auto-detected (falling back to eth0). It can also be overridden on the
+    command line with -i/--interface.
 """
 
 from __future__ import annotations
@@ -57,15 +63,18 @@ log = logging.getLogger("gizwits-sim")
 
 SMARTDRIFT_PRODUCT_KEY = "63632f4902094055ab3fd994c0d612fa"
 DC_RUNNER_PRODUCT_KEY = "8879684725d14066922374e50889f893"
+DC_SKIMMER_PRODUCT_KEY = "00276aa006684c05805c297f60058c3d"
 
 PRODUCT_KEYS: dict[str, str] = {
     "smartdrift": SMARTDRIFT_PRODUCT_KEY,
     "dc_runner": DC_RUNNER_PRODUCT_KEY,
+    "dc_skimmer": DC_SKIMMER_PRODUCT_KEY,
 }
 
 PRODUCT_NAMES: dict[str, str] = {
     "smartdrift": "Current_Pump",
     "dc_runner": "DC_Runner",
+    "dc_skimmer": "DC_Runner",
 }
 
 # ── Default attribute state per device type ───────────────────────────────────
@@ -108,9 +117,38 @@ def _default_attrs_dc_runner() -> dict[str, Any]:
     }
 
 
+def _default_attrs_dc_skimmer() -> dict[str, Any]:
+    """Initial attribute state for a DC Skimmer (DC Runner skimmer pump).
+
+    Mirrors the writable status + fault datapoints reported by a real device
+    (see scripts/devices_datapoints/DC_RUNNER_*.json). Schedule blobs
+    (AutoTimeNN, YMDData, HMSData) are intentionally omitted — the integration
+    does not expose them.
+    """
+    return {
+        "SwitchON": 1,
+        "Mode": 1,  # 0: AP control, 1: Wireless control
+        "FeedSwitch": 0,
+        "TimerON": 0,
+        "AutoMode": 1,  # 0: stop, 1: auto, 2: feeding
+        "Motor_Speed": 60,
+        "FeedTime": 10,
+        "AutoGears": 50,
+        "AutoFeedTime": 10,
+        "Fault_Overcurrent": 0,
+        "Fault_Overvoltage": 0,
+        "Fault_OverTemp": 0,
+        "Fault_Undervoltage": 0,
+        "Fault_Lockedrotor": 0,
+        "Fault_no_liveload": 0,
+        "Fault_UART": 0,
+    }
+
+
 DEFAULT_ATTRS: dict[str, Any] = {
     "smartdrift": _default_attrs_smartdrift,
     "dc_runner": _default_attrs_dc_runner,
+    "dc_skimmer": _default_attrs_dc_skimmer,
 }
 
 # ── Datapoint schemas ─────────────────────────────────────────────────────────
@@ -242,7 +280,7 @@ def _datapoints_smartdrift() -> dict:
 
 
 def _datapoints_dc_runner() -> dict:
-    """Gizwits datapoint schema for DC Runner."""
+    """Gizwits datapoint schema for a DC Runner return pump."""
     return {
         "entities": [
             {
@@ -298,9 +336,138 @@ def _datapoints_dc_runner() -> dict:
     }
 
 
+def _datapoints_dc_skimmer() -> dict:
+    """Gizwits datapoint schema for a DC Skimmer (mirrors the real device)."""
+    return {
+        "entities": [
+            {
+                "display_name": "Main Control",
+                "attrs": [
+                    {
+                        "name": "SwitchON",
+                        "display_name": "Power Switch",
+                        "type": "bool",
+                        "rw": "rw",
+                    },
+                    {
+                        "name": "Mode",
+                        "display_name": "Control Source",
+                        "type": "bool",
+                        "rw": "rw",
+                    },
+                    {
+                        "name": "FeedSwitch",
+                        "display_name": "Feeding Mode",
+                        "type": "bool",
+                        "rw": "rw",
+                    },
+                    {
+                        "name": "TimerON",
+                        "display_name": "Timer",
+                        "type": "bool",
+                        "rw": "rw",
+                    },
+                    {
+                        "name": "AutoMode",
+                        "display_name": "Timer Mode",
+                        "type": "enum",
+                        "rw": "rw",
+                        "enum": ["停机", "自动", "喂食"],
+                    },
+                    {
+                        "name": "Motor_Speed",
+                        "display_name": "Motor Speed",
+                        "type": "uint8",
+                        "rw": "rw",
+                        # Device spec is 0-100; 0 stops the motor, running range 30-100.
+                        "min": 0,
+                        "max": 100,
+                        "unit": "%",
+                    },
+                    {
+                        "name": "FeedTime",
+                        "display_name": "Feeding Duration",
+                        "type": "uint8",
+                        "rw": "rw",
+                        "min": 1,
+                        "max": 60,
+                        "unit": "min",
+                    },
+                    {
+                        "name": "AutoGears",
+                        "display_name": "Timer Speed",
+                        "type": "uint8",
+                        "rw": "rw",
+                        "min": 0,
+                        "max": 100,
+                        "unit": "%",
+                    },
+                    {
+                        "name": "AutoFeedTime",
+                        "display_name": "Timer Feeding Time",
+                        "type": "uint8",
+                        "rw": "rw",
+                        "min": 1,
+                        "max": 60,
+                        "unit": "min",
+                    },
+                ],
+            },
+            {
+                "display_name": "Faults",
+                "attrs": [
+                    {
+                        "name": "Fault_Overcurrent",
+                        "display_name": "Overcurrent Fault",
+                        "type": "bool",
+                        "rw": "ro",
+                    },
+                    {
+                        "name": "Fault_Overvoltage",
+                        "display_name": "Overvoltage Fault",
+                        "type": "bool",
+                        "rw": "ro",
+                    },
+                    {
+                        "name": "Fault_OverTemp",
+                        "display_name": "Overtemperature Fault",
+                        "type": "bool",
+                        "rw": "ro",
+                    },
+                    {
+                        "name": "Fault_Undervoltage",
+                        "display_name": "Undervoltage Fault",
+                        "type": "bool",
+                        "rw": "ro",
+                    },
+                    {
+                        "name": "Fault_Lockedrotor",
+                        "display_name": "Locked Rotor Fault",
+                        "type": "bool",
+                        "rw": "ro",
+                    },
+                    {
+                        "name": "Fault_no_liveload",
+                        "display_name": "No Load Fault",
+                        "type": "bool",
+                        "rw": "ro",
+                    },
+                    {
+                        "name": "Fault_UART",
+                        "display_name": "UART Comm Fault",
+                        "type": "bool",
+                        "rw": "ro",
+                    },
+                ],
+            },
+        ]
+    }
+
+
 DATAPOINTS: dict[str, Any] = {
     SMARTDRIFT_PRODUCT_KEY: _datapoints_smartdrift,
     DC_RUNNER_PRODUCT_KEY: _datapoints_dc_runner,
+    DC_SKIMMER_PRODUCT_KEY: _datapoints_dc_skimmer,
 }
 
 # ── Virtual device registry ───────────────────────────────────────────────────
@@ -593,25 +760,46 @@ class GizwitsServer(HTTPServer):
 # ── IP management ─────────────────────────────────────────────────────────────
 
 
-def ensure_virtual_ip(ip: str) -> None:
-    """Add a virtual IP alias on eth0 if not already present."""
+def detect_default_interface() -> str:
+    """Best-effort detection of the primary network interface.
+
+    Reads the default route (``ip route show default``) and returns the device
+    after ``dev``. Falls back to ``eth0`` if detection fails.
+    """
+    try:
+        result = subprocess.run(
+            ["ip", "route", "show", "default"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        parts = result.stdout.split()
+        if "dev" in parts:
+            return parts[parts.index("dev") + 1]
+    except (OSError, ValueError, IndexError):
+        pass
+    return "eth0"
+
+
+def ensure_virtual_ip(ip: str, interface: str) -> None:
+    """Add a virtual IP alias on *interface* if not already present."""
     result = subprocess.run(
-        ["ip", "addr", "show", "dev", "eth0"], capture_output=True, text=True
+        ["ip", "addr", "show", "dev", interface], capture_output=True, text=True
     )
     if f"inet {ip}" in result.stdout:
-        log.info("Virtual IP %s already present", ip)
+        log.info("Virtual IP %s already present on %s", ip, interface)
         return
-    log.info("Adding virtual IP %s/24 on eth0…", ip)
-    subprocess.run(["ip", "addr", "add", f"{ip}/24", "dev", "eth0"], check=True)
+    log.info("Adding virtual IP %s/24 on %s…", ip, interface)
+    subprocess.run(["ip", "addr", "add", f"{ip}/24", "dev", interface], check=True)
     time.sleep(1)
 
 
-def remove_virtual_ip(ip: str) -> None:
-    """Remove the virtual IP alias from eth0."""
+def remove_virtual_ip(ip: str, interface: str) -> None:
+    """Remove the virtual IP alias from *interface*."""
     subprocess.run(
-        ["ip", "addr", "del", f"{ip}/24", "dev", "eth0"], capture_output=True
+        ["ip", "addr", "del", f"{ip}/24", "dev", interface], capture_output=True
     )
-    log.info("Virtual IP %s removed", ip)
+    log.info("Virtual IP %s removed from %s", ip, interface)
 
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
@@ -620,6 +808,13 @@ def remove_virtual_ip(ip: str) -> None:
 def main() -> None:
     parser = OptionParser(usage="sudo %prog [-c <config_file>]", version="1.0.0")
     parser.add_option("-c", "--config", dest="config", help="Path to JSON config file")
+    parser.add_option(
+        "-i",
+        "--interface",
+        dest="interface",
+        help="Network interface for the virtual IP (overrides config; "
+        "default: auto-detect, falling back to eth0)",
+    )
     (options, _) = parser.parse_args()
 
     if os.geteuid() != 0:
@@ -637,9 +832,14 @@ def main() -> None:
     virtual_ip = config.get("virtual_ip", "127.0.0.1")
     port = config.get("port", 8080)
 
+    # Interface resolution: CLI flag > config key > auto-detected default route.
+    interface = (
+        options.interface or config.get("interface") or detect_default_interface()
+    )
+
     # Register virtual IP
     if virtual_ip != "127.0.0.1":
-        ensure_virtual_ip(virtual_ip)
+        ensure_virtual_ip(virtual_ip, interface)
 
     # Build simulator state
     state = SimulatorState(config)
@@ -648,6 +848,8 @@ def main() -> None:
     log.info("═══════════════════════════════════════════════════")
     log.info("  Gizwits Simulator")
     log.info("  Listening on  http://%s:%d", virtual_ip, port)
+    if virtual_ip != "127.0.0.1":
+        log.info("  Interface: %s", interface)
     log.info("  Username: %s  |  Password: %s", state.username, state.password)
     log.info("  Devices: %d registered", len(state.devices))
     for dev in state.devices.values():
@@ -668,7 +870,7 @@ def main() -> None:
         server.shutdown()
     finally:
         if virtual_ip != "127.0.0.1":
-            remove_virtual_ip(virtual_ip)
+            remove_virtual_ip(virtual_ip, interface)
         log.info("Bye!")
 
 

@@ -16,7 +16,12 @@ from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DC_RUNNER_PRODUCT_KEY, DOMAIN, SMARTDRIFT_PRODUCT_KEY
+from .const import (
+    DC_RUNNER_PRODUCT_KEY,
+    DC_SKIMMER_PRODUCT_KEY,
+    DOMAIN,
+    SMARTDRIFT_PRODUCT_KEY,
+)
 from .coordinator import AquaMedicCoordinator
 from .entity import AquaMedicEntity
 
@@ -68,8 +73,8 @@ NUMBER_DESCRIPTIONS: tuple[AquaMedicNumberDescription, ...] = (
     ),
 )
 
-# DC Runner: single speed control — attr confirmed from working integration
-# min=30 enforced: below 30% the DC Runner motor may stall
+# DC Runner return pump: single speed control (attr Flow).
+# min=30 enforced: below 30% the DC Runner motor may stall.
 DC_RUNNER_NUMBER_DESCRIPTIONS: tuple[AquaMedicNumberDescription, ...] = (
     AquaMedicNumberDescription(
         key="flow",
@@ -82,6 +87,63 @@ DC_RUNNER_NUMBER_DESCRIPTIONS: tuple[AquaMedicNumberDescription, ...] = (
         icon="mdi:water-percent",
         mode=NumberMode.SLIDER,
         gated_by_0_10v=True,
+    ),
+)
+
+# DC Skimmer numeric controls (attrs confirmed from a real datapoint capture).
+# Motor_Speed: motor gear, 0 stops the motor; running range is 30-100%. min=30
+# is enforced because below 30% the motor may stall — use the power switch to
+# stop the pump.
+DC_SKIMMER_NUMBER_DESCRIPTIONS: tuple[AquaMedicNumberDescription, ...] = (
+    AquaMedicNumberDescription(
+        key="motor_speed",
+        translation_key="motor_speed",
+        attr="Motor_Speed",
+        native_min_value=30,
+        native_max_value=100,
+        native_step=1,
+        native_unit_of_measurement="%",
+        icon="mdi:speedometer",
+        mode=NumberMode.SLIDER,
+        gated_by_0_10v=True,
+    ),
+    AquaMedicNumberDescription(
+        key="feed_time",
+        translation_key="feed_time",
+        attr="FeedTime",
+        native_min_value=1,
+        native_max_value=60,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        device_class=NumberDeviceClass.DURATION,
+        icon="mdi:timer-sand",
+        mode=NumberMode.BOX,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    AquaMedicNumberDescription(
+        key="auto_gears",
+        translation_key="auto_gears",
+        attr="AutoGears",
+        native_min_value=0,
+        native_max_value=100,
+        native_step=1,
+        native_unit_of_measurement="%",
+        icon="mdi:speedometer-medium",
+        mode=NumberMode.SLIDER,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    AquaMedicNumberDescription(
+        key="auto_feed_time",
+        translation_key="auto_feed_time",
+        attr="AutoFeedTime",
+        native_min_value=1,
+        native_max_value=60,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        device_class=NumberDeviceClass.DURATION,
+        icon="mdi:timer-sand-complete",
+        mode=NumberMode.BOX,
+        entity_category=EntityCategory.CONFIG,
     ),
 )
 
@@ -98,6 +160,8 @@ async def async_setup_entry(
             descs = NUMBER_DESCRIPTIONS
         elif dev.product_key == DC_RUNNER_PRODUCT_KEY:
             descs = DC_RUNNER_NUMBER_DESCRIPTIONS
+        elif dev.product_key == DC_SKIMMER_PRODUCT_KEY:
+            descs = DC_SKIMMER_NUMBER_DESCRIPTIONS
         else:
             continue
         for desc in descs:
@@ -125,9 +189,7 @@ class AquaMedicNumberEntity(AquaMedicEntity, NumberEntity):  # type: ignore[misc
     def available(self) -> bool:  # type: ignore[override]
         dev = self._device
         if not (
-            self.coordinator.last_update_success
-            and dev is not None
-            and dev.is_online
+            self.coordinator.last_update_success and dev is not None and dev.is_online
         ):
             return False
         if self._desc.gated_by_0_10v and self.coordinator.get_control_0_10v(self._did):

@@ -112,6 +112,14 @@
           "master": "Maître",
           "slave": "Esclave"
         }
+      },
+      "auto_mode": {
+        "name": "Mode programmé",
+        "state": {
+          "stop": "Arrêt",
+          "auto": "Automatique",
+          "feeding": "Alimentation"
+        }
       }
     },
     "number": {
@@ -123,6 +131,15 @@
       },
       "feed_time": {
         "name": "Durée nourrissage"
+      },
+      "motor_speed": {
+        "name": "Vitesse du moteur"
+      },
+      "auto_gears": {
+        "name": "Vitesse programmée"
+      },
+      "auto_feed_time": {
+        "name": "Durée d'alimentation programmée"
       }
     },
     "binary_sensor": {

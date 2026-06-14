@@ -29,6 +29,7 @@ O seu dispositivo não é suportado? Entre em contato comigo.
 |---|---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | <img width="368" height="1024" alt="image" src="https://github.com/user-attachments/assets/3cc74acc-aab7-4bbf-a386-51155cf11943" /> | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
 | Aqua Medic DC Runner x.1 / x.2 / x.3 (bomba de retorno) | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
+| Aqua Medic DC Runner (bomba de escumador) | | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic Reefdoser EVO | <img width="458" height="458" alt="image" src="https://github.com/user-attachments/assets/b5e98032-9cea-4647-9443-18d4d68a275d" />| `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
@@ -95,7 +96,7 @@ Todos estes dispositivos utilizam a plataforma IoT Gizwits (o mesmo backend que 
 |---|---|
 | **Atualizar** | Força uma atualização imediata |
 
-### DC Runner
+### DC Runner (bomba de retorno)
 
 > 🧪 O suporte está implementado mas **ainda não testado em hardware real**. Feedback bem-vindo.
 
@@ -105,7 +106,7 @@ Todos estes dispositivos utilizam a plataforma IoT Gizwits (o mesmo backend que 
 |---|---|
 | **Alimentação** | Ligar/desligar principal |
 | **Modo alimentação** | Pausa o caudal durante 10 minutos |
-| **Modo controlo 0-10V** | Quando ativo, o caudal é controlado por sinal externo 0-10V |
+| **Modo controlo 0-10V** | Quando ativo, desativa o controlo de velocidade (bomba controlada por sinal externo 0-10V) |
 
 #### Números
 
@@ -113,13 +114,53 @@ Todos estes dispositivos utilizam a plataforma IoT Gizwits (o mesmo backend que 
 |---|---|---|
 | **Caudal** | 30–100 % | Velocidade da bomba (mínimo 30 % — abaixo disso o motor pode bloquear) |
 
+### DC Skimmer (bomba de escumador DC Runner)
+
+> ✅ Baseado numa captura real dos datapoints do dispositivo.
+
+#### Interruptores
+
+| Entidade | Descrição |
+|---|---|
+| **Alimentação** | Ligar/desligar principal |
+| **Modo alimentação** | Ativa a pausa de alimentação |
+| **Temporizador** | Ativa o programa horário |
+| **Modo controlo 0-10V** | Quando ativo, desativa o controlo de velocidade (bomba controlada por sinal externo 0-10V) |
+
+#### Seletores
+
+| Entidade | Opções |
+|---|---|
+| **Modo programado** | Parar · Automático · Alimentação |
+
+#### Números
+
+| Entidade | Intervalo | Descrição |
+|---|---|---|
+| **Velocidade do motor** | 30–100 % | Velocidade da bomba (mínimo 30 % — abaixo disso o motor pode bloquear; desativado no modo 0-10V) |
+| **Duração da alimentação** | 1–60 min | Duração da pausa de alimentação |
+| **Velocidade programada** | 0–100 % | Velocidade usada pelo programa horário |
+| **Duração da alimentação programada** | 1–60 min | Duração de alimentação usada pelo programa horário |
+
 #### Sensores binários (diagnóstico)
 
 | Entidade | Descrição |
 |---|---|
-| **Falha marcha em seco** | Desligamento automático se nenhuma água detectada durante 2 min |
-| **Falha rotor bloqueado** | Obstrução mecânica detectada |
-| **Falha de tensão** | Tensão de alimentação fora do intervalo |
+| **Falha de sobrecorrente** | Sobrecorrente / curto-circuito do motor |
+| **Falha de sobretensão** | Sobretensão do motor |
+| **Falha de sobretemperatura** | Temperatura do motor demasiado alta |
+| **Falha de subtensão** | Subtensão do motor |
+| **Falha de rotor bloqueado** | Motor encravado / bloqueado |
+| **Falha sem carga** | Bomba a funcionar em seco |
+| **Falha de comunicação UART** | Erro de comunicação módulo ↔ placa principal |
+
+#### Botão (diagnóstico)
+
+| Entidade | Descrição |
+|---|---|
+| **Atualizar** | Força uma atualização imediata |
+
+> **Sobre o controlo 0-10V:** cada controlador DC Runner tem uma entrada física 0-10V para um controlador de aquário externo (Apex, GHL, …). É uma porta de hardware, não um valor na nuvem, pelo que não aparece como atributo do dispositivo — o interruptor *Modo controlo 0-10V* é um sinalizador local do Home Assistant que desativa o controlo de velocidade enquanto a bomba é controlada externamente. De acordo com o manual da Aqua Medic, no modo 0-10V a bomba deve funcionar a **≥ 60 %**.
 
 ---
 
@@ -137,6 +178,32 @@ Ir a **Definições → Dispositivos e serviços → Adicionar integração → 
 O servidor correto é pré-selecionado automaticamente com base no idioma do Home Assistant.
 
 Após a configuração, o intervalo pode ser alterado em **Definições → Dispositivos e serviços → Aqua Medic → Configurar**.
+
+---
+
+## Desenvolvimento
+
+### Simulador local
+
+Um simulador do cloud Gizwits (`scripts/gizwits_simulator.py`) permite testar a integração sem hardware real nem acesso ao cloud. Configura-se através de `scripts/gizwits_sim_config.json`:
+
+| Chave | Descrição |
+|---|---|
+| `username` / `password` | Credenciais que a integração deve usar |
+| `virtual_ip` | IP onde o simulador escuta (`127.0.0.1` ignora o IP virtual) |
+| `interface` | Interface de rede para o IP virtual (opcional; se omitido, a interface da rota predefinida é detetada automaticamente, com `eth0` como recurso; substituível com `-i/--interface`) |
+| `port` | Porta (predefinição `8080`) |
+| `devices` | Lista de `{ "type": ..., "count": N }`; tipos: `smartdrift`, `dc_runner` (bomba de retorno), `dc_skimmer` |
+
+Execução: `sudo python3 scripts/gizwits_simulator.py` (root necessário para adicionar o IP virtual).
+
+Para que a região **Simulador** apareça no fluxo de configuração, crie o ficheiro de sinalização local (ignorado pelo git, nunca o submeta):
+
+```bash
+cp custom_components/aquamedic/simulator_enabled.example custom_components/aquamedic/.simulator_enabled
+```
+
+Reinicie o Home Assistant, adicione a integração e selecione *Simulador*; ser-lhe-á pedido o URL do simulador (predefinição `http://localhost:8080`) e as credenciais.
 
 ---
 

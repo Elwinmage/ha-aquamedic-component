@@ -26,6 +26,14 @@ LINKAGE_RAW_MAP: dict[str, str] = {
 AUTO_MODE_RAW_MAP: dict[str, str] = {
     **MODE_RAW_MAP,
     "停机": "stop",
+    "自动": "auto",
+    "喂食": "feeding",
+}
+
+# DC Runner timer mode (AutoMode) → HA select option keys.
+DC_RUNNER_AUTO_MODE_RAW_MAP: dict[str, str] = {
+    "停机": "stop",
+    "自动": "auto",
     "喂食": "feeding",
 }
 
@@ -44,14 +52,19 @@ HA_ENTITY_ATTRS: dict[tuple[str, str], str] = {
     ("switch", "control_0_10v"): "Control0_10V",
     ("select", "mode"): "Mode",
     ("select", "linkage"): "Linkage",
+    ("select", "auto_mode"): "AutoMode",
     ("number", "flow"): "Flow",
     ("number", "frequency"): "Frequency",
     ("number", "feed_time"): "FeedTime",
+    ("number", "motor_speed"): "Motor_Speed",
+    ("number", "auto_gears"): "AutoGears",
+    ("number", "auto_feed_time"): "AutoFeedTime",
 }
 
 HA_SELECT_OPTION_MAPS: dict[str, dict[str, str]] = {
     "mode": MODE_RAW_MAP,
     "linkage": LINKAGE_RAW_MAP,
+    "auto_mode": DC_RUNNER_AUTO_MODE_RAW_MAP,
 }
 
 # Overrides where app UI strings differ from HA entity naming conventions.
@@ -59,6 +72,7 @@ HA_ENTITY_NAME_OVERRIDES: dict[tuple[str, str], dict[str, str]] = {
     ("switch", "power"): {"en": "Power", "de": "Ein/Aus"},
     ("select", "mode"): {"en": "Wave mode", "de": "Wellenmodus"},
     ("select", "linkage"): {"en": "Linkage", "de": "Verknüpfung"},
+    ("select", "auto_mode"): {"en": "Timer mode", "de": "Timer-Modus"},
     ("switch", "control_0_10v"): {"en": "0-10V control mode", "de": "0–10-V-Steuerung"},
 }
 

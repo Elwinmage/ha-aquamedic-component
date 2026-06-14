@@ -17,7 +17,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, DC_RUNNER_PRODUCT_KEY, SMARTDRIFT_PRODUCT_KEY
+from .const import (
+    DC_RUNNER_PRODUCT_KEY,
+    DC_SKIMMER_PRODUCT_KEY,
+    DOMAIN,
+    SMARTDRIFT_PRODUCT_KEY,
+)
 from .coordinator import AquaMedicCoordinator
 from .entity import AquaMedicEntity
 
@@ -79,7 +84,7 @@ SWITCH_DESCRIPTIONS: tuple[AquaMedicSwitchDescription, ...] = (
     ),
 )
 
-# DC Runner only has power, feeding mode and 0-10V control
+# DC Runner return pump: power, feeding mode and 0-10V control
 DC_RUNNER_SWITCH_DESCRIPTIONS: tuple[AquaMedicSwitchDescription, ...] = (
     AquaMedicSwitchDescription(
         key="power",
@@ -107,6 +112,42 @@ DC_RUNNER_SWITCH_DESCRIPTIONS: tuple[AquaMedicSwitchDescription, ...] = (
     ),
 )
 
+# DC Skimmer exposes power, feeding mode, timer/pause and 0-10V control
+DC_SKIMMER_SWITCH_DESCRIPTIONS: tuple[AquaMedicSwitchDescription, ...] = (
+    AquaMedicSwitchDescription(
+        key="power",
+        translation_key="power",
+        attr="SwitchON",
+        icon="mdi:power",
+        icon_off="mdi:power-off",
+    ),
+    AquaMedicSwitchDescription(
+        key="feed_switch",
+        translation_key="feed_switch",
+        attr="FeedSwitch",
+        icon="mdi:fish-off",
+        icon_off="mdi:fish",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    AquaMedicSwitchDescription(
+        key="timer_on",
+        translation_key="timer_on",
+        attr="TimerON",
+        icon="mdi:timer",
+        icon_off="mdi:timer-off",
+        entity_category=EntityCategory.CONFIG,
+    ),
+    AquaMedicSwitchDescription(
+        key="control_0_10v",
+        translation_key="control_0_10v",
+        attr="",
+        kind=_SwitchKind.LOCAL,
+        icon="mdi:tune-variant",
+        icon_off="mdi:tune-variant",
+        entity_category=EntityCategory.CONFIG,
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -120,6 +161,8 @@ async def async_setup_entry(
             descs = SWITCH_DESCRIPTIONS
         elif dev.product_key == DC_RUNNER_PRODUCT_KEY:
             descs = DC_RUNNER_SWITCH_DESCRIPTIONS
+        elif dev.product_key == DC_SKIMMER_PRODUCT_KEY:
+            descs = DC_SKIMMER_SWITCH_DESCRIPTIONS
         else:
             continue
         for desc in descs:
@@ -219,15 +262,16 @@ class AquaMedicLocalSwitchEntity(  # type: ignore[misc, reportIncompatibleVariab
 
     @cached_property
     def device_info(self) -> DeviceInfo:  # type: ignore[reportIncompatibleVariableOverride]
-        from .const import DC_RUNNER_PRODUCT_KEY
+        from .const import DC_RUNNER_PRODUCT_KEY, DC_SKIMMER_PRODUCT_KEY
 
         dev = self.coordinator.data.get(self._did) if self.coordinator.data else None
         name = dev.name if dev else self._did
-        model = (
-            "DC Runner"
-            if (dev and dev.product_key == DC_RUNNER_PRODUCT_KEY)
-            else "SmartDrift"
-        )
+        if dev and dev.product_key == DC_RUNNER_PRODUCT_KEY:
+            model = "DC Runner"
+        elif dev and dev.product_key == DC_SKIMMER_PRODUCT_KEY:
+            model = "DC Skimmer"
+        else:
+            model = "SmartDrift"
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=name,

@@ -29,6 +29,7 @@ Your device is not supported? Please contact me.
 |---|---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | <img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/3cc74acc-aab7-4bbf-a386-51155cf11943" /> | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
 | Aqua Medic DC Runner x.1 / x.2 / x.3 (return pump) | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
+| Aqua Medic DC Runner (skimmer pump) | | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic Reefdoser EVO | <img width="458" height="458" alt="image" src="https://github.com/user-attachments/assets/b5e98032-9cea-4647-9443-18d4d68a275d" />| `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
@@ -95,7 +96,7 @@ All these devices use the Gizwits IoT platform (same backend as the official Aqu
 |---|---|
 | **Refresh** | Forces an immediate data refresh without waiting for the next poll interval |
 
-### DC Runner
+### DC Runner (return pump)
 
 > 🧪 Support is implemented but **not yet tested on real hardware**. Feedback welcome.
 
@@ -105,7 +106,7 @@ All these devices use the Gizwits IoT platform (same backend as the official Aqu
 |---|---|
 | **Power** | Main on/off |
 | **Feeding mode** | Pauses pump output for 10 minutes |
-| **0-10V control mode** | When on, flow is driven by external 0-10V signal |
+| **0-10V control mode** | When on, disables the speed slider (pump driven by external 0-10V signal) |
 
 #### Numbers
 
@@ -113,13 +114,53 @@ All these devices use the Gizwits IoT platform (same backend as the official Aqu
 |---|---|---|
 | **Flow rate** | 30–100 % | Pump speed (minimum 30 % — below this the motor may stall) |
 
+### DC Skimmer (DC Runner skimmer pump)
+
+> ✅ Based on a real device datapoint capture.
+
+#### Switches
+
+| Entity | Description |
+|---|---|
+| **Power** | Main on/off |
+| **Feeding mode** | Activates feeding pause |
+| **Timer** | Enables the timer / schedule program |
+| **0-10V control mode** | When on, disables the speed slider (pump driven by external 0-10V signal) |
+
+#### Selects
+
+| Entity | Options |
+|---|---|
+| **Timer mode** | Stop · Auto · Feeding |
+
+#### Numbers
+
+| Entity | Range | Description |
+|---|---|---|
+| **Motor speed** | 30–100 % | Pump speed (minimum 30 % — below this the motor may stall; disabled in 0-10V mode) |
+| **Feeding duration** | 1–60 min | Duration of the feeding pause |
+| **Timer speed** | 0–100 % | Speed used by the scheduled program |
+| **Timer feeding time** | 1–60 min | Feeding duration used by the scheduled program |
+
 #### Binary Sensors (diagnostic)
 
 | Entity | Description |
 |---|---|
-| **Dry run fault** | Automatic shut-off if no water detected for 2 min |
-| **Locked rotor fault** | Mechanical obstruction detected |
-| **Voltage fault** | Input voltage out of range |
+| **Overcurrent fault** | Motor overcurrent / short circuit |
+| **Overvoltage fault** | Motor overvoltage |
+| **Overtemperature fault** | Motor temperature too high |
+| **Undervoltage fault** | Motor undervoltage |
+| **Locked rotor fault** | Motor jammed / blocked |
+| **No load fault** | Pump running dry |
+| **UART communication fault** | Module ↔ mainboard communication error |
+
+#### Button (diagnostic)
+
+| Entity | Description |
+|---|---|
+| **Refresh** | Forces an immediate data refresh |
+
+> **About 0-10V control:** every DC Runner controller has a physical 0-10V input for an external aquarium controller (Apex, GHL, …). It is a hardware port, not a cloud value, so it does not appear as a device attribute — the *0-10V control mode* switch is a local Home Assistant flag that disables the speed slider while the pump is driven externally. Per Aqua Medic's manual, in 0-10V mode the pump must run at **≥ 60 %**.
 
 ---
 
@@ -137,6 +178,32 @@ Go to **Settings → Devices & Services → Add Integration → Aqua Medic**.
 The correct server is pre-selected automatically based on your Home Assistant language.
 
 After setup, options (refresh interval) can be changed via **Settings → Devices & Services → Aqua Medic → Configure**.
+
+---
+
+## Development
+
+### Local simulator
+
+A Gizwits cloud simulator (`scripts/gizwits_simulator.py`) lets you test the integration without real hardware or cloud access. It is configured via `scripts/gizwits_sim_config.json`:
+
+| Key | Description |
+|---|---|
+| `username` / `password` | Credentials the integration must use to log in |
+| `virtual_ip` | IP the simulator binds to (`127.0.0.1` skips virtual-IP setup) |
+| `interface` | Network interface for the virtual IP (optional; if omitted, the default-route interface is auto-detected, falling back to `eth0`; can be overridden with `-i/--interface`) |
+| `port` | Listening port (default `8080`) |
+| `devices` | List of `{ "type": ..., "count": N }`; available types: `smartdrift`, `dc_runner` (return pump), `dc_skimmer` |
+
+Run it with `sudo python3 scripts/gizwits_simulator.py` (root is required to add the virtual IP).
+
+To make the **Simulator** region appear in the config flow, create the local flag file (git-ignored, never commit it):
+
+```bash
+cp custom_components/aquamedic/simulator_enabled.example custom_components/aquamedic/.simulator_enabled
+```
+
+Restart Home Assistant, add the integration and select *Simulator*; you will then be asked for the simulator host URL (default `http://localhost:8080`) and the credentials from the config file.
 
 ---
 

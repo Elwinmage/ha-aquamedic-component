@@ -29,6 +29,7 @@ Controle sus bombas Aqua Medic desde Home Assistant a través de la API cloud de
 |---|---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | <img width="368" height="1024" alt="image" src="https://github.com/user-attachments/assets/3cc74acc-aab7-4bbf-a386-51155cf11943" /> | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
 | Aqua Medic DC Runner x.1 / x.2 / x.3 (bomba de retorno) | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
+| Aqua Medic DC Runner (bomba de espumador) | | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic Reefdoser EVO | <img width="458" height="458" alt="image" src="https://github.com/user-attachments/assets/b5e98032-9cea-4647-9443-18d4d68a275d" />| `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
@@ -95,7 +96,7 @@ Todos estos dispositivos utilizan la plataforma IoT Gizwits (el mismo backend qu
 |---|---|
 | **Actualizar** | Fuerza una actualización inmediata |
 
-### DC Runner
+### DC Runner (bomba de retorno)
 
 > 🧪 El soporte está implementado pero **aún no probado en hardware real**. Se agradecen comentarios.
 
@@ -105,7 +106,7 @@ Todos estos dispositivos utilizan la plataforma IoT Gizwits (el mismo backend qu
 |---|---|
 | **Encendido** | Encendido/apagado principal |
 | **Modo alimentación** | Detiene el caudal durante 10 minutos |
-| **Modo control 0-10V** | Cuando está activo, el caudal es controlado por señal externa 0-10V |
+| **Modo control 0-10V** | Cuando está activo, desactiva el control de velocidad (bomba controlada por señal externa 0-10V) |
 
 #### Números
 
@@ -113,13 +114,53 @@ Todos estos dispositivos utilizan la plataforma IoT Gizwits (el mismo backend qu
 |---|---|---|
 | **Caudal** | 30–100 % | Velocidad de la bomba (mínimo 30 % — por debajo el motor puede bloquearse) |
 
+### DC Skimmer (bomba de espumador DC Runner)
+
+> ✅ Basado en una captura real de los datapoints del dispositivo.
+
+#### Interruptores
+
+| Entidad | Descripción |
+|---|---|
+| **Encendido** | Encendido/apagado principal |
+| **Modo alimentación** | Activa la pausa de alimentación |
+| **Temporizador** | Activa el programa horario |
+| **Modo control 0-10V** | Cuando está activo, desactiva el control de velocidad (bomba controlada por señal externa 0-10V) |
+
+#### Selectores
+
+| Entidad | Opciones |
+|---|---|
+| **Modo programado** | Parada · Automático · Alimentación |
+
+#### Números
+
+| Entidad | Rango | Descripción |
+|---|---|---|
+| **Velocidad del motor** | 30–100 % | Velocidad de la bomba (mínimo 30 % — por debajo el motor puede bloquearse; desactivado en modo 0-10V) |
+| **Duración de alimentación** | 1–60 min | Duración de la pausa de alimentación |
+| **Velocidad programada** | 0–100 % | Velocidad usada por el programa horario |
+| **Duración de alimentación programada** | 1–60 min | Duración de alimentación usada por el programa horario |
+
 #### Sensores binarios (diagnóstico)
 
 | Entidad | Descripción |
 |---|---|
-| **Fallo marcha en seco** | Parada automática si no detecta agua durante 2 min |
-| **Fallo rotor bloqueado** | Obstrucción mecánica detectada |
-| **Fallo de tensión** | Tensión de alimentación fuera de rango |
+| **Fallo de sobrecorriente** | Sobrecorriente / cortocircuito del motor |
+| **Fallo de sobretensión** | Sobretensión del motor |
+| **Fallo de sobretemperatura** | Temperatura del motor demasiado alta |
+| **Fallo de subtensión** | Subtensión del motor |
+| **Fallo de rotor bloqueado** | Motor atascado / bloqueado |
+| **Fallo sin carga** | Bomba funcionando en seco |
+| **Fallo de comunicación UART** | Error de comunicación módulo ↔ placa principal |
+
+#### Botón (diagnóstico)
+
+| Entidad | Descripción |
+|---|---|
+| **Actualizar** | Fuerza una actualización inmediata |
+
+> **Sobre el control 0-10V:** cada controlador DC Runner tiene una entrada física 0-10V para un controlador de acuario externo (Apex, GHL, …). Es un puerto de hardware, no un valor en la nube, por lo que no aparece como atributo del dispositivo — el interruptor *Modo control 0-10V* es un indicador local de Home Assistant que desactiva el control de velocidad mientras la bomba se controla externamente. Según el manual de Aqua Medic, en modo 0-10V la bomba debe funcionar al **≥ 60 %**.
 
 ---
 
@@ -137,6 +178,32 @@ Ir a **Configuración → Dispositivos y servicios → Añadir integración → 
 El servidor correcto se preselecciona automáticamente según el idioma de Home Assistant.
 
 Tras la configuración, el intervalo puede modificarse en **Configuración → Dispositivos y servicios → Aqua Medic → Configurar**.
+
+---
+
+## Desarrollo
+
+### Simulador local
+
+Un simulador del cloud Gizwits (`scripts/gizwits_simulator.py`) permite probar la integración sin hardware real ni acceso al cloud. Se configura mediante `scripts/gizwits_sim_config.json`:
+
+| Clave | Descripción |
+|---|---|
+| `username` / `password` | Credenciales que la integración debe usar |
+| `virtual_ip` | IP a la que se enlaza el simulador (`127.0.0.1` omite la IP virtual) |
+| `interface` | Interfaz de red para la IP virtual (opcional; si se omite, se autodetecta la interfaz de la ruta por defecto, con `eth0` como reserva; se puede forzar con `-i/--interface`) |
+| `port` | Puerto (por defecto `8080`) |
+| `devices` | Lista de `{ "type": ..., "count": N }`; tipos: `smartdrift`, `dc_runner` (bomba de retorno), `dc_skimmer` |
+
+Ejecución: `sudo python3 scripts/gizwits_simulator.py` (se requiere root para añadir la IP virtual).
+
+Para que la región **Simulador** aparezca en el flujo de configuración, crea el archivo indicador local (ignorado por git, nunca lo subas):
+
+```bash
+cp custom_components/aquamedic/simulator_enabled.example custom_components/aquamedic/.simulator_enabled
+```
+
+Reinicia Home Assistant, añade la integración y selecciona *Simulador*; se te pedirá la URL del simulador (por defecto `http://localhost:8080`) y las credenciales.
 
 ---
 

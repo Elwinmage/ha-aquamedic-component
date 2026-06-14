@@ -168,5 +168,9 @@ DEFAULT_REGION = "eu"
 # ── Known product keys ────────────────────────────────────────────────────────
 # SmartDrift / EcoDrift x.1 / x.3 series (confirmed via datapoint discovery)
 SMARTDRIFT_PRODUCT_KEY = "63632f4902094055ab3fd994c0d612fa"
-# DC Runner x.1 / x.2 / x.3 return pump series
+# DC Runner return pump series (single speed control).
 DC_RUNNER_PRODUCT_KEY = "8879684725d14066922374e50889f893"
+# DC Skimmer (DC Runner skimmer pump) — confirmed via a real datapoint capture
+# (see scripts/devices_datapoints/DC_RUNNER_*.json). Richer datapoint set:
+# motor speed, feeding/timer modes, auto schedule and fault reporting.
+DC_SKIMMER_PRODUCT_KEY = "00276aa006684c05805c297f60058c3d"

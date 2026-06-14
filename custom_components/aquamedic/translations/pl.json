@@ -50,6 +50,14 @@
           "master": "Master pump",
           "slave": "Slave pump"
         }
+      },
+      "auto_mode": {
+        "name": "Tryb harmonogramu",
+        "state": {
+          "stop": "Stop",
+          "auto": "Automatyczny",
+          "feeding": "Karmienie"
+        }
       }
     },
     "number": {
@@ -61,6 +69,15 @@
       },
       "feed_time": {
         "name": "Feeding pause time"
+      },
+      "motor_speed": {
+        "name": "Prędkość silnika"
+      },
+      "auto_gears": {
+        "name": "Prędkość harmonogramu"
+      },
+      "auto_feed_time": {
+        "name": "Czas karmienia harmonogramu"
       }
     },
     "binary_sensor": {

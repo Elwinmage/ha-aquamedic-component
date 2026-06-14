@@ -2,6 +2,7 @@
   "username": "test@aquamedic.com",
   "password": "password123",
   "virtual_ip": "192.168.100.10",
+  "interface": "eth0",
   "port": 8080,
   "devices": [
     {
@@ -10,6 +11,10 @@
     },
     {
       "type": "dc_runner",
+      "count": 1
+    },
+    {
+      "type": "dc_skimmer",
       "count": 1
     }
   ]
