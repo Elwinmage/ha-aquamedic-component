@@ -29,7 +29,7 @@ Twoje urządzenie nie jest obsługiwane? Skontaktuj się ze mną.
 |---|---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | <img width="368" height="1024" alt="image" src="https://github.com/user-attachments/assets/3cc74acc-aab7-4bbf-a386-51155cf11943" /> | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
 | Aqua Medic DC Runner x.1 / x.2 / x.3 (pompa powrotna) | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
-| Aqua Medic DC Runner (pompa odpieniacza) | | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
+| Aqua Medic DC Runner (pompa odpieniacza) | <img alt="odpieniacza" src="doc/img/skimmer.png" width="200" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic Reefdoser EVO | <img width="458" height="458" alt="image" src="https://github.com/user-attachments/assets/b5e98032-9cea-4647-9443-18d4d68a275d" />| `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
@@ -40,12 +40,15 @@ Wszystkie te urządzenia korzystają z platformy IoT Gizwits (ten sam backend co
 
 ## Instalacja
 
-### Przez HACS (zalecane)
+### Przez HACS
 
-1. W HACS przejdź do **Integracje → ⋮ → Niestandardowe repozytoria**
-2. Dodaj `https://github.com/Elwinmage/ha-aquamedic-component` jako **Integrację**
-3. Wyszukaj **Aqua Medic** i zainstaluj
-4. Uruchom ponownie Home Assistant
+Integracja jest teraz oficjalnie w HACS. Po prostu wyszukaj **Aqua Medic** w karcie Integracje i zainstaluj.
+
+Lub użyj przycisku instalacji bezpośredniej:
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Elwinmage&repository=ha-aquamedic-component&category=integration)
+
+Następnie zrestartuj Home Assistant.
 
 ---
 

@@ -29,7 +29,7 @@ Your device is not supported? Please contact me.
 |---|---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | <img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/3cc74acc-aab7-4bbf-a386-51155cf11943" /> | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
 | Aqua Medic DC Runner x.1 / x.2 / x.3 (return pump) | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
-| Aqua Medic DC Runner (skimmer pump) | | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
+| Aqua Medic DC Runner (skimmer pump) | <img alt="skimmer" src="doc/img/skimmer.png" width="200" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic Reefdoser EVO | <img width="458" height="458" alt="image" src="https://github.com/user-attachments/assets/b5e98032-9cea-4647-9443-18d4d68a275d" />| `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
@@ -40,12 +40,15 @@ All these devices use the Gizwits IoT platform (same backend as the official Aqu
 
 ## Installation
 
-### Via HACS (recommended)
+### Via HACS
 
-1. In HACS, go to **Integrations → ⋮ → Custom repositories**
-2. Add `https://github.com/Elwinmage/ha-aquamedic-component` as an **Integration**
-3. Search for **Aqua Medic** and install
-4. Restart Home Assistant
+The integration is now officially in HACS. Simply search for **Aqua Medic** in the Integrations tab and install it.
+
+Or use the direct installation button:
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Elwinmage&repository=ha-aquamedic-component&category=integration)
+
+Then restart Home Assistant.
 
 ---
 
