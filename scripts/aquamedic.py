@@ -38,59 +38,371 @@ def step(msg):
 
 
 # ── Confirmed Identifiers ────────────────────────────────────────────────────
-APP_ID = "07452c4f036a4be3acedf8dbeef38320"
+# Android app key — used for AEP + Gateway (primary API path, mirrors const.py).
+GIZWITS_APP_KEY = "b45f1f4f31f546378fcfaed7775c4d12"
+# iOS app id — legacy Open API fallback only.
+GIZWITS_LEGACY_APP_ID = "07452c4f036a4be3acedf8dbeef38320"
+GIZWITS_USER_AGENT = (
+    "gizwitssuperapprn/154300000 CFNetwork/3826.500.131 Darwin/24.5.0"
+)
 
 # ── Gizwits regional servers ─────────────────────────────────────────────────
-# Mirrors the GIZWITS_API_URLS dict from the HA integration (const.py).
+# Mirrors GIZWITS_REGION_ENDPOINTS in const.py (both AEP and legacy Open API).
 GIZWITS_SERVERS = {
     "eu": {
         "label": "Europe",
-        "base_url": "https://euapi.gizwits.com/app",
+        "aep_base": "https://euaepapp.gizwits.com",
+        "open_api_base": "https://euapi.gizwits.com",
     },
     "us": {
         "label": "USA / Asia",
-        "base_url": "https://usapi.gizwits.com/app",
+        "aep_base": "https://usaepapp.gizwits.com",
+        "open_api_base": "https://usapi.gizwits.com",
     },
     "cn": {
         "label": "China",
-        "base_url": "https://api.gizwits.com/app",
+        "aep_base": "https://aep-app.gizwits.com",
+        "open_api_base": "https://api.gizwits.com",
     },
 }
 
 # Order used by auto-detection: EU first (most common for Aqua Medic users)
 AUTO_TRY_ORDER = ["eu", "us", "cn"]
 
+# ── AEP path suffixes (same across regions) ──────────────────────────────────
+AEP_PATH_LOGIN_PWD = "/app/smart_home/login/pwd"
+AEP_PATH_BINDINGS = "/app/bindings"
+AEP_PATH_USER_DEVICES = "/app/smartHome/v2/users/devices"
+AEP_PATH_DEVDATA = "/app/devdata/{device_id}/latest"
+AEP_PATH_DATAPOINT = "/app/datapoint"
 
-def build_urls(base: str) -> dict:
-    """Return all API URLs derived from a base URL (real cloud or simulator)."""
-    b = base.rstrip("/")
+# ── Legacy Open API path suffixes ────────────────────────────────────────────
+LEGACY_PATH_PROVISION = "/app/provision"
+LEGACY_PATH_LOGIN = "/app/login"
+LEGACY_PATH_BINDINGS = "/app/bindings"
+LEGACY_PATH_DEVDATA = "/app/devdata/{device_id}/latest"
+LEGACY_PATH_DATAPOINT = "/app/datapoint"
+
+
+def build_urls(server_conf: dict) -> dict:
+    """Return all API URLs derived from a regional server config.
+
+    Bundles AEP and Open API endpoints so the caller can transparently switch
+    between the two, exactly like the HA client does.
+    """
+    aep = server_conf["aep_base"].rstrip("/")
+    legacy = server_conf["open_api_base"].rstrip("/")
     return {
-        "provision": f"{b}/provision",
-        "login": f"{b}/login",
-        "bindings": f"{b}/bindings",
-        "devdata": f"{b}/devdata/{{device_id}}/latest",
-        "datapoint": f"{b}/datapoint",
+        # AEP endpoints (primary)
+        "aep_login": f"{aep}{AEP_PATH_LOGIN_PWD}",
+        "aep_bindings": f"{aep}{AEP_PATH_BINDINGS}",
+        "aep_user_devices": f"{aep}{AEP_PATH_USER_DEVICES}",
+        "aep_devdata": f"{aep}{AEP_PATH_DEVDATA}",
+        "aep_datapoint": f"{aep}{AEP_PATH_DATAPOINT}",
+        # Legacy Open API endpoints (fallback)
+        "legacy_provision": f"{legacy}{LEGACY_PATH_PROVISION}",
+        "legacy_login": f"{legacy}{LEGACY_PATH_LOGIN}",
+        "legacy_bindings": f"{legacy}{LEGACY_PATH_BINDINGS}",
+        "legacy_devdata": f"{legacy}{LEGACY_PATH_DEVDATA}",
+        "legacy_datapoint": f"{legacy}{LEGACY_PATH_DATAPOINT}",
     }
 
 
-def get_headers(token=None):
-    """Build common request headers, optionally with user token."""
+def build_sim_urls(base: str) -> dict:
+    """Build URL map for the local simulator (legacy Open API shape only)."""
+    b = base.rstrip("/")
+    return {
+        "aep_login": None,
+        "aep_bindings": None,
+        "aep_user_devices": None,
+        "aep_devdata": None,
+        "aep_datapoint": None,
+        "legacy_provision": f"{b}/provision",
+        "legacy_login": f"{b}/login",
+        "legacy_bindings": f"{b}/bindings",
+        "legacy_devdata": f"{b}/devdata/{{device_id}}/latest",
+        "legacy_datapoint": f"{b}/datapoint",
+    }
+
+
+# ── AEP helpers ──────────────────────────────────────────────────────────────
+
+def aep_headers(jwt: str | None = None) -> dict:
+    """Build headers for AEP requests (with optional JWT for authenticated calls)."""
     h = {
-        "X-Gizwits-Application-Id": APP_ID,
         "Content-Type": "application/json",
-        "User-Agent": "gizwitssuperapprn/154300000 CFNetwork/3826.500.131 Darwin/24.5.0",
+        "Version": "1.0",
+        "X-Gizwits-Application-Id": GIZWITS_APP_KEY,
+        "User-Agent": GIZWITS_USER_AGENT,
+    }
+    if jwt:
+        h["Authorization"] = jwt
+    return h
+
+
+def wrap_aep(data: dict) -> dict:
+    """Wrap payload in the AEP envelope required by /app/smart_home endpoints."""
+    return {"appKey": GIZWITS_APP_KEY, "data": data, "version": "1.0"}
+
+
+def parse_aep_envelope(body: dict) -> dict:
+    """Extract inner 'data' from AEP response; return the whole body otherwise."""
+    inner = body.get("data")
+    if isinstance(inner, dict):
+        return inner
+    return body
+
+
+def aep_code_is_success(code) -> bool:
+    """Return True when AEP envelope code indicates success (200 or missing)."""
+    if code is None:
+        return True
+    try:
+        return int(code) == 200
+    except (TypeError, ValueError):
+        return False
+
+
+def aep_login(session, username, password, urls, lang="fr"):
+    """Try AEP login.
+
+    Returns (jwt, None) on success, or (None, detail) on failure. The detail
+    string is designed to be actionable — the caller can decide whether to
+    fall back to legacy or stop.
+    """
+    try:
+        res = session.post(
+            urls["aep_login"],
+            headers=aep_headers(),
+            json=wrap_aep(
+                {
+                    "account": username,
+                    "password": password,
+                    "lang": lang,
+                    "refreshToken": True,
+                }
+            ),
+            timeout=10,
+        )
+    except requests.RequestException as exc:
+        return None, f"network: {exc}"
+
+    if res.status_code != 200:
+        try:
+            body = res.json()
+            code = body.get("code", "")
+            message = body.get("message") or res.text
+            return None, f"HTTP {res.status_code} (code={code}): {message}"
+        except ValueError:
+            return None, f"HTTP {res.status_code}: {res.text[:200]}"
+
+    try:
+        body = res.json()
+    except ValueError:
+        return None, "Invalid JSON in AEP login response"
+
+    code = body.get("code")
+    if not aep_code_is_success(code):
+        return None, f"AEP error {code}: {body.get('message', body)}"
+
+    data = parse_aep_envelope(body)
+    jwt_block = data.get("jwtAuthenticationDto") or {}
+    jwt = jwt_block.get("token") or data.get("token")
+    if not jwt:
+        return None, f"No JWT in AEP response: {data}"
+    return jwt, None
+
+
+def aep_get_devices(session, jwt, urls):
+    """Fetch devices via AEP: smartHome first, /app/bindings only on real failure.
+
+    Mirrors client.py::_detect_device_list_api logic — a smartHome success
+    (even with zero devices) means this is a migrated account and bindings
+    is expected to return 404.
+    """
+    info("Fetching devices via AEP /smartHome/v2/users/devices...")
+    res = session.get(urls["aep_user_devices"], headers=aep_headers(jwt), timeout=10)
+
+    smart_home_reachable = False
+    smart_home_body = None
+    if res.status_code == 200:
+        try:
+            smart_home_body = res.json()
+        except ValueError:
+            smart_home_body = None
+        if smart_home_body is not None:
+            code = smart_home_body.get("code")
+            if aep_code_is_success(code):
+                smart_home_reachable = True
+                data = (
+                    parse_aep_envelope(smart_home_body)
+                    if "code" in smart_home_body
+                    else smart_home_body
+                )
+                devices = _extract_devices(data)
+                if devices:
+                    ok(f"smartHome returned {len(devices)} device(s).")
+                    return devices
+                # Successful response but nothing extracted — dump raw payload
+                # so the user can see whether it is truly empty or in an
+                # unrecognized shape.
+                warn(
+                    "smartHome responded successfully but no devices were "
+                    "extracted. Raw response follows:"
+                )
+                print(json.dumps(smart_home_body, indent=2, ensure_ascii=False))
+            else:
+                warn(
+                    f"smartHome AEP error code={code}: "
+                    f"{smart_home_body.get('message', smart_home_body)}"
+                )
+    else:
+        warn(f"smartHome HTTP {res.status_code}: {res.text[:200]}")
+
+    # Only try bindings when smartHome truly errored out — a migrated account
+    # returns 404 on bindings and we do not want to muddle the diagnosis.
+    if smart_home_reachable:
+        info(
+            "smartHome responded — skipping /app/bindings "
+            "(returns 404 on migrated accounts by design)."
+        )
+        return []
+
+    info("smartHome unavailable, trying AEP /app/bindings...")
+    res = session.get(
+        urls["aep_bindings"],
+        headers=aep_headers(jwt),
+        params={"limit": 50, "skip": 0},
+        timeout=10,
+    )
+    if res.status_code == 404:
+        err("AEP bindings also returned 404 — cannot list devices on AEP.")
+        return []
+    if res.status_code != 200:
+        err(f"AEP bindings error ({res.status_code}): {res.text[:200]}")
+        return []
+    try:
+        body = res.json()
+    except ValueError:
+        return []
+    if not aep_code_is_success(body.get("code")):
+        warn(f"AEP bindings code={body.get('code')}: {body.get('message')}")
+        return []
+    data = parse_aep_envelope(body) if "code" in body else body
+    devices = _extract_devices(data)
+    if devices:
+        ok(f"bindings returned {len(devices)} device(s).")
+    return devices
+
+
+def _extract_devices(data) -> list:
+    """Normalize device list from various AEP / smartHome / bindings shapes.
+
+    Handles: raw list, {devices|deviceList|list|records|items: [...]},
+    and one level of {data|result: <same shapes>} nesting.
+    """
+    device_keys = ("devices", "deviceList", "list", "records", "items")
+
+    if isinstance(data, list):
+        return data
+    if not isinstance(data, dict):
+        return []
+
+    # Direct keys.
+    for key in device_keys:
+        val = data.get(key)
+        if isinstance(val, list):
+            return val
+
+    # One level of nesting under data/result.
+    for wrapper in ("data", "result"):
+        inner = data.get(wrapper)
+        if isinstance(inner, list):
+            return inner
+        if isinstance(inner, dict):
+            for key in device_keys:
+                val = inner.get(key)
+                if isinstance(val, list):
+                    return val
+    return []
+
+
+def aep_get_device_latest(session, jwt, device_id, urls):
+    """Fetch latest attrs for a device on the AEP host."""
+    url = urls["aep_devdata"].format(device_id=device_id)
+    res = session.get(
+        url,
+        headers=aep_headers(jwt),
+        params={"show_expected_status": 1},
+        timeout=10,
+    )
+    if res.status_code != 200:
+        warn(f"AEP devdata unavailable ({res.status_code}): {res.text[:120]}")
+        return None
+    try:
+        body = res.json()
+    except ValueError:
+        return None
+    if "code" in body:
+        if not aep_code_is_success(body.get("code")):
+            warn(f"AEP devdata error {body.get('code')}: {body.get('message')}")
+            return None
+        return parse_aep_envelope(body)
+    return body
+
+
+def aep_get_datapoints(session, jwt, product_key, urls):
+    """Fetch datapoint schema via AEP (with Open API host fallback on 404)."""
+    res = session.get(
+        urls["aep_datapoint"],
+        headers=aep_headers(jwt),
+        params={"product_key": product_key},
+        timeout=10,
+    )
+    if res.status_code == 404:
+        # Some product keys are only served by the legacy Open API host.
+        res = session.get(
+            urls["legacy_datapoint"],
+            headers={
+                "Content-Type": "application/json",
+                "X-Gizwits-Application-Id": GIZWITS_APP_KEY,
+                "User-Agent": GIZWITS_USER_AGENT,
+            },
+            params={"product_key": product_key},
+            timeout=10,
+        )
+    if res.status_code != 200:
+        warn(f"Datapoints not available ({res.status_code}): {res.text[:120]}")
+        return None
+    try:
+        body = res.json()
+    except ValueError:
+        return None
+    if "code" in body:
+        return parse_aep_envelope(body)
+    return body
+
+
+# ── Legacy Open API helpers (fallback for non-migrated accounts) ─────────────
+
+def legacy_headers(token=None):
+    """Build headers for legacy Open API requests."""
+    h = {
+        "X-Gizwits-Application-Id": GIZWITS_LEGACY_APP_ID,
+        "Content-Type": "application/json",
+        "User-Agent": GIZWITS_USER_AGENT,
     }
     if token:
         h["X-Gizwits-User-token"] = token
     return h
 
 
-def provision(session, phone_id, urls):
-    """Provision a virtual mobile client — required before login."""
-    step(f"Provisioning client (Phone ID: {phone_id[:8]}...)...")
+def legacy_provision(session, phone_id, urls):
+    """Provision a virtual mobile client — legacy prerequisite for login."""
+    step(f"Provisioning legacy client (Phone ID: {phone_id[:8]}...)...")
     res = session.post(
-        urls["provision"],
-        headers=get_headers(),
+        urls["legacy_provision"],
+        headers=legacy_headers(),
         json={
             "phone_id": phone_id,
             "os": "Linux",
@@ -98,6 +410,7 @@ def provision(session, phone_id, urls):
             "sdk_version": "2.23.23.01613",
             "phone_model": "Python-Client",
         },
+        timeout=10,
     )
     if res.status_code == 200:
         ok("Provisioning successful.")
@@ -105,72 +418,106 @@ def provision(session, phone_id, urls):
         warn(f"Provisioning ignored or failed ({res.status_code})")
 
 
-def login(session, username, password, urls):
-    """Authenticate and return token."""
-    step(f"Connecting as {username}...")
-    res = session.post(
-        urls["login"],
-        headers=get_headers(),
-        json={"username": username, "password": password},
-    )
-    if res.status_code != 200:
-        err(f"Login error: {res.text}")
-        return None
-    token = res.json().get("token")
-    ok("Authenticated! Token retrieved.")
-    return token
-
-
-def try_login(session, username, password, urls):
-    """Attempt login silently; return (token, None) on success or (None, detail) on failure.
-
-    Returning the error detail lets auto_detect_server distinguish a wrong
-    region (network error / 404) from bad credentials (Gizwits error codes
-    9004 / 9020), so the user gets an actionable message.
-    """
+def legacy_login(session, username, password, urls):
+    """Authenticate against the legacy Open API and return the token."""
     try:
         res = session.post(
-            urls["login"],
-            headers=get_headers(),
+            urls["legacy_login"],
+            headers=legacy_headers(),
             json={"username": username, "password": password},
             timeout=10,
         )
     except requests.RequestException as exc:
-        return None, str(exc)
-
+        return None, f"network: {exc}"
     if res.status_code != 200:
-        # Extract Gizwits structured error when available
         try:
             body = res.json()
+            code = body.get("error_code", "")
             detail = body.get("detail") or body.get("error_message") or res.text
-            error_code = body.get("error_code", "")
-            detail_str = f"HTTP {res.status_code} (code={error_code}): {detail}"
+            return None, f"HTTP {res.status_code} (code={code}): {detail}"
         except ValueError:
-            detail_str = f"HTTP {res.status_code}: {res.text[:200]}"
-        return None, detail_str
-
+            return None, f"HTTP {res.status_code}: {res.text[:200]}"
     return res.json().get("token"), None
 
 
-def auto_detect_server(session, phone_id, username, password):
-    """Try each regional server and return (region, urls, token) on success.
+def legacy_get_devices(session, token, urls):
+    """Fetch all devices via legacy /bindings."""
+    info("Fetching devices via legacy /bindings...")
+    res = session.get(
+        f"{urls['legacy_bindings']}?limit=20",
+        headers=legacy_headers(token),
+        timeout=10,
+    )
+    if res.status_code != 200:
+        err(f"Bindings error ({res.status_code}): {res.text}")
+        return []
+    return res.json().get("devices", [])
 
-    Returns (None, None, None) if all regions fail.
+
+def legacy_get_device_latest(session, token, device_id, urls):
+    """Fetch latest attrs for a device (legacy Open API)."""
+    url = urls["legacy_devdata"].format(device_id=device_id)
+    res = session.get(url, headers=legacy_headers(token), timeout=10)
+    if res.status_code == 200:
+        return res.json()
+    warn(f"Unable to fetch status ({res.status_code}): {res.text[:120]}")
+    return None
+
+
+def legacy_get_datapoints(session, token, product_key, urls):
+    """Fetch datapoint schema (legacy Open API)."""
+    res = session.get(
+        urls["legacy_datapoint"],
+        headers=legacy_headers(token),
+        params={"product_key": product_key},
+        timeout=10,
+    )
+    if res.status_code == 200:
+        return res.json()
+    warn(f"Datapoints not available ({res.status_code}): {res.text[:120]}")
+    return None
+
+
+# ── Auto-detect: AEP first per region, then legacy per region ────────────────
+
+def auto_detect_server(session, username, password, lang="fr"):
+    """Try AEP on every region first, then legacy on every region.
+
+    Returns (region, urls, api_mode, token) on success, or None-tuple on failure.
+    api_mode is either "aep" or "legacy" and token is the JWT (AEP) or
+    legacy token accordingly.
     """
-    step(f"\n{MAGENTA}🌍 Auto-detect: trying all Gizwits servers...{RESET}\n")
+    step(f"\n{MAGENTA}🌍 Auto-detect: trying AEP on all regions first...{RESET}\n")
 
+    # Phase 1 — AEP login (primary, migrated accounts).
     for region in AUTO_TRY_ORDER:
         srv = GIZWITS_SERVERS[region]
-        urls = build_urls(srv["base_url"])
+        urls = build_urls(srv)
         label = srv["label"]
+        info(f"AEP {label} ({region})...")
+        jwt, error = aep_login(session, username, password, urls, lang=lang)
+        if jwt:
+            ok(f"  AEP success on {BOLD}{label} ({region}){RESET}")
+            return region, urls, "aep", jwt
+        # 500/526/1000033 = auth errors (bad credentials or unknown account
+        # on this region). Try next region rather than stopping — the same
+        # account might live on another AEP region.
+        warn(f"  AEP {label}: {error}")
 
-        info(f"Trying {label} ({region})...")
+    # Phase 2 — Legacy Open API fallback (older / non-migrated accounts).
+    step(f"\n{MAGENTA}🌍 AEP failed on every region — trying legacy...{RESET}\n")
+    phone_id = str(uuid.uuid4()).upper()
+    for region in AUTO_TRY_ORDER:
+        srv = GIZWITS_SERVERS[region]
+        urls = build_urls(srv)
+        label = srv["label"]
+        info(f"Legacy {label} ({region})...")
 
-        # Provision (non-fatal)
+        # Provision is legacy-only and non-fatal.
         try:
             session.post(
-                urls["provision"],
-                headers=get_headers(),
+                urls["legacy_provision"],
+                headers=legacy_headers(),
                 json={
                     "phone_id": phone_id,
                     "os": "Linux",
@@ -181,67 +528,31 @@ def auto_detect_server(session, phone_id, username, password):
                 timeout=10,
             )
         except requests.RequestException:
-            warn(f"  {label}: server unreachable, skipping.")
+            warn(f"  Legacy {label}: server unreachable, skipping.")
             continue
 
-        # Try login — use (token, error) tuple from updated try_login
-        token, login_error = try_login(session, username, password, urls)
-
+        token, error = legacy_login(session, username, password, urls)
         if token:
-            ok(f"  Success on {BOLD}{label} ({region}){RESET}")
-            return region, urls, token
-        else:
-            # Gizwits error codes 9004 (wrong password) / 9020 (unknown user):
-            # the server is reachable but the credentials are definitively wrong.
-            # Stop immediately instead of trying other regions and confusing the user.
-            is_credential_error = login_error and (
-                "9004" in login_error or "9020" in login_error
-            )
-            if is_credential_error:
-                err(f"  {label}: invalid credentials — {login_error}")
-                err("  Stopping: credentials rejected by a reachable server.")
-                return None, None, None
-            else:
-                warn(f"  {label}: login failed — {login_error}")
+            ok(f"  Legacy success on {BOLD}{label} ({region}){RESET}")
+            return region, urls, "legacy", token
 
-    return None, None, None
+        # 9004 (wrong password) / 9020 (unknown user) / 9026 (migrated account)
+        # are definitive on a reachable server — stop right there.
+        if error and any(c in error for c in ("9004", "9020", "9026")):
+            err(f"  Legacy {label}: credentials rejected — {error}")
+            if "9020" in error:
+                err(
+                    "  Account not found on legacy Open API. This usually means "
+                    "the account exists only on AEP but AEP login also failed — "
+                    "check the password (special characters need quoting)."
+                )
+            return None, None, None, None
+        warn(f"  Legacy {label}: {error}")
 
-
-def get_devices(session, token, urls):
-    """Fetch all devices bound to the account."""
-    info("Fetching devices via /bindings...")
-    res = session.get(
-        f"{urls['bindings']}?limit=20",
-        headers=get_headers(token),
-    )
-    if res.status_code != 200:
-        err(f"Bindings error ({res.status_code}): {res.text}")
-        return []
-    return res.json().get("devices", [])
+    return None, None, None, None
 
 
-def get_device_latest(session, token, device_id, urls):
-    """Fetch latest reported attribute values for a device."""
-    url = urls["devdata"].format(device_id=device_id)
-    res = session.get(url, headers=get_headers(token))
-    if res.status_code == 200:
-        return res.json()
-    warn(f"Unable to fetch status ({res.status_code}): {res.text}")
-    return None
-
-
-def get_datapoints(session, token, product_key, urls):
-    """Fetch the datapoint schema for a given product_key."""
-    res = session.get(
-        urls["datapoint"],
-        headers=get_headers(token),
-        params={"product_key": product_key},
-    )
-    if res.status_code == 200:
-        return res.json()
-    warn(f"Datapoints not available ({res.status_code}): {res.text}")
-    return None
-
+# ── Display helpers ──────────────────────────────────────────────────────────
 
 def save_datapoints(device, schema, output_dir):
     """Save the raw datapoint schema to a JSON file in output_dir."""
@@ -297,10 +608,39 @@ def describe_datapoint(dp):
     )
 
 
-def print_device_info(session, token, device, urls, save_dir=None):
+def _normalize_device(device: dict) -> dict:
+    """Normalize AEP/legacy device records to a common shape for display."""
+    # AEP smartHome uses camelCase, legacy uses snake_case — merge both.
+    normalized = dict(device)
+    normalized["did"] = device.get("did") or device.get("deviceId") or "?"
+    normalized["product_key"] = (
+        device.get("product_key") or device.get("productKey") or ""
+    )
+    name = (
+        device.get("dev_alias")
+        or device.get("product_name")
+        or device.get("name")
+        or "Unknown"
+    )
+    normalized["dev_alias"] = name
+    if not normalized.get("product_name"):
+        normalized["product_name"] = name
+    online = device.get("is_online")
+    if online is None:
+        online = device.get("isOnline")
+    if online is None and device.get("wifiOnline") is not None:
+        online = bool(device.get("wifiOnline"))
+    if online is None and device.get("netStatus") is not None:
+        online = device.get("netStatus") == 2
+    normalized["is_online"] = bool(online) if online is not None else False
+    return normalized
+
+
+def print_device_info(session, token, device, urls, api_mode, save_dir=None):
     """Print full info for one device: metadata, live state and datapoints."""
-    name = device.get("dev_alias") or device.get("product_name") or "Unknown"
-    did = device.get("did", "?")
+    device = _normalize_device(device)
+    name = device.get("dev_alias")
+    did = device.get("did")
     product_key = device.get("product_key", "")
     is_online = device.get("is_online", False)
     status_str = f"{GREEN}ONLINE{RESET}" if is_online else f"{RED}OFFLINE{RESET}"
@@ -311,10 +651,14 @@ def print_device_info(session, token, device, urls, save_dir=None):
     print(f"{BOLD}PK      :{RESET} {DIM}{product_key}{RESET}")
     print(f"{BOLD}Status  :{RESET} {status_str}")
 
-    # Current state
-    latest = get_device_latest(session, token, did, urls)
+    # Current state — dispatch on api_mode.
+    if api_mode == "aep":
+        latest = aep_get_device_latest(session, token, did, urls)
+    else:
+        latest = legacy_get_device_latest(session, token, did, urls)
+
     if latest:
-        attrs = latest.get("attr", {})
+        attrs = latest.get("attr", {}) or latest.get("attrs", {})
         updated = latest.get("updated_at", "?")
         print(f"\n  {CYAN}Current state{RESET} {DIM}(updated at: {updated}){RESET}")
         if attrs:
@@ -323,11 +667,14 @@ def print_device_info(session, token, device, urls, save_dir=None):
         else:
             print(f"    {DIM}(no data available){RESET}")
 
-    # Datapoint schema
+    # Datapoint schema.
     schema = None
     if product_key:
         print(f"\n  {CYAN}Supported Datapoints{RESET}")
-        schema = get_datapoints(session, token, product_key, urls)
+        if api_mode == "aep":
+            schema = aep_get_datapoints(session, token, product_key, urls)
+        else:
+            schema = legacy_get_datapoints(session, token, product_key, urls)
         if schema:
             entities = schema.get("entities", [])
             dps = []
@@ -342,44 +689,59 @@ def print_device_info(session, token, device, urls, save_dir=None):
         else:
             print(f"    {DIM}(datapoints not accessible for this product){RESET}")
 
-    # Save JSON
     if save_dir is not None and schema is not None:
         save_datapoints(device, schema, save_dir)
 
     print("-" * 60)
 
 
-def get_gizwits_devices(
-    username, password, urls, save_dir=None, token=None, session=None
-):
-    """Main entry: provision, login, list devices.
-
-    If *token* is already provided (e.g. from auto-detect), the existing
-    *session* should also be passed so cookies/state are preserved.
-    If neither is provided, a new session is created and login is performed.
-    """
-    if session is None:
-        session = requests.Session()
-    phone_id = str(uuid.uuid4()).upper()
-
+def get_gizwits_devices(session, token, urls, api_mode, save_dir=None):
+    """Main entry: list devices then print each one."""
     try:
-        if token is None:
-            provision(session, phone_id, urls)
-            token = login(session, username, password, urls)
-            if not token:
-                return
+        if api_mode == "aep":
+            devices = aep_get_devices(session, token, urls)
+        else:
+            devices = legacy_get_devices(session, token, urls)
 
-        devices = get_devices(session, token, urls)
         if not devices:
             print(f"{YELLOW}No devices found.{RESET}")
             return
 
         print(f"\n{BOLD}{len(devices)} device(s) found:{RESET}\n")
         for d in devices:
-            print_device_info(session, token, d, urls, save_dir=save_dir)
+            print_device_info(session, token, d, urls, api_mode, save_dir=save_dir)
 
     except Exception as e:
         err(f"System error: {e}")
+
+
+# ── Single-region explicit modes ─────────────────────────────────────────────
+
+def login_single_region(session, region, username, password, lang="fr"):
+    """Try AEP then legacy on a single explicit region.
+
+    Returns (urls, api_mode, token) or (None, None, None).
+    """
+    srv = GIZWITS_SERVERS[region]
+    urls = build_urls(srv)
+    label = srv["label"]
+
+    step(f"AEP login on {label} ({region})...")
+    jwt, error = aep_login(session, username, password, urls, lang=lang)
+    if jwt:
+        ok(f"AEP authenticated on {label}.")
+        return urls, "aep", jwt
+    warn(f"AEP failed: {error}")
+
+    step(f"Falling back to legacy Open API on {label}...")
+    phone_id = str(uuid.uuid4()).upper()
+    legacy_provision(session, phone_id, urls)
+    token, error = legacy_login(session, username, password, urls)
+    if token:
+        ok(f"Legacy authenticated on {label}.")
+        return urls, "legacy", token
+    err(f"Legacy failed: {error}")
+    return None, None, None
 
 
 if __name__ == "__main__":
@@ -392,22 +754,24 @@ if __name__ == "__main__":
         "auto   - try all servers automatically (default)",
     ]
     for key, srv in GIZWITS_SERVERS.items():
-        server_help_lines.append(f"{key:<6s} - {srv['label']}  ({srv['base_url']})")
-    server_help_lines.append("sim    - local simulator")
+        server_help_lines.append(
+            f"{key:<6s} - {srv['label']}  (AEP: {srv['aep_base']})"
+        )
+    server_help_lines.append("sim    - local simulator (legacy Open API shape)")
 
     parser = argparse.ArgumentParser(
-        description="Gizwits Device Explorer -- Aqua Medic / SmartDrift",
+        description="Gizwits Device Explorer -- Aqua Medic (AEP + Legacy)",
         epilog=(
             "Server regions:\n"
             + "\n".join(f"  {line}" for line in server_help_lines)
             + "\n\n"
             "Examples:\n"
-            "  python aquamedic.py user@mail.com password                # auto-detect server\n"
+            "  python aquamedic.py user@mail.com password                # auto-detect\n"
             "  python aquamedic.py user@mail.com password --server eu    # force Europe\n"
             "  python aquamedic.py user@mail.com password --server us    # force USA/Asia\n"
             "  python aquamedic.py user@mail.com password --server cn    # force China\n"
             "  python aquamedic.py user@mail.com password --server sim   # local simulator\n"
-            "  python aquamedic.py user@mail.com password --server sim --sim-url http://192.168.100.10:8080\n"
+            "  python aquamedic.py user@mail.com password --sim --sim-url http://192.168.100.10:8080\n"
             "  python aquamedic.py user@mail.com password --save\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -430,6 +794,12 @@ if __name__ == "__main__":
         help=(
             "Gizwits server region: " + ", ".join(server_choices) + " (default: auto)"
         ),
+    )
+    server_group.add_argument(
+        "--lang",
+        default="fr",
+        metavar="LANG",
+        help="Language sent to AEP login (default: fr)",
     )
 
     # Simulator options
@@ -476,20 +846,26 @@ if __name__ == "__main__":
 
     save_dir = args.output_dir if args.save else None
 
-    # ── Simulator mode ────────────────────────────────────────────────────────
+    session = requests.Session()
+
+    # ── Simulator mode (legacy Open API shape) ────────────────────────────────
     if server == "sim":
         base = args.sim_url.rstrip("/")
         api_base = base if base.endswith("/app") else f"{base}/app"
-        urls = build_urls(api_base)
+        urls = build_sim_urls(api_base)
         print(f"\n{YELLOW}[SIM] Simulator mode -> {api_base}{RESET}\n")
-        get_gizwits_devices(args.username, password, urls, save_dir=save_dir)
+        phone_id = str(uuid.uuid4()).upper()
+        legacy_provision(session, phone_id, urls)
+        token, error = legacy_login(session, args.username, password, urls)
+        if not token:
+            err(f"Simulator login failed: {error}")
+            sys.exit(1)
+        get_gizwits_devices(session, token, urls, "legacy", save_dir=save_dir)
 
     # ── Auto-detect mode ──────────────────────────────────────────────────────
     elif server == "auto":
-        session = requests.Session()
-        phone_id = str(uuid.uuid4()).upper()
-        region, urls, token = auto_detect_server(
-            session, phone_id, args.username, password
+        region, urls, api_mode, token = auto_detect_server(
+            session, args.username, password, lang=args.lang
         )
         if region is None:
             err("Auto-detection failed: could not login on any server.")
@@ -498,20 +874,19 @@ if __name__ == "__main__":
 
         print(
             f"\n{GREEN}🌍 Using server: {BOLD}"
-            f"{GIZWITS_SERVERS[region]['label']} ({region}){RESET}\n"
+            f"{GIZWITS_SERVERS[region]['label']} ({region}, {api_mode}){RESET}\n"
         )
-        get_gizwits_devices(
-            args.username,
-            password,
-            urls,
-            save_dir=save_dir,
-            token=token,
-            session=session,
-        )
+        get_gizwits_devices(session, token, urls, api_mode, save_dir=save_dir)
 
     # ── Explicit region ───────────────────────────────────────────────────────
     else:
         srv = GIZWITS_SERVERS[server]
-        urls = build_urls(srv["base_url"])
         print(f"\n{CYAN}🌍 Server: {BOLD}{srv['label']} ({server}){RESET}\n")
-        get_gizwits_devices(args.username, password, urls, save_dir=save_dir)
+        urls, api_mode, token = login_single_region(
+            session, server, args.username, password, lang=args.lang
+        )
+        if urls is None:
+            err("Login failed on both AEP and legacy for this region.")
+            sys.exit(1)
+        print(f"{GREEN}Using {api_mode.upper()} API on {srv['label']}.{RESET}\n")
+        get_gizwits_devices(session, token, urls, api_mode, save_dir=save_dir)
