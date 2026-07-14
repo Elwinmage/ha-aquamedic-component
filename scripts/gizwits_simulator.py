@@ -62,18 +62,29 @@ log = logging.getLogger("gizwits-sim")
 # ── Known product keys (must match const.py) ──────────────────────────────────
 
 SMARTDRIFT_PRODUCT_KEY = "63632f4902094055ab3fd994c0d612fa"
-DC_RUNNER_PRODUCT_KEY = "8879684725d14066922374e50889f893"
-DC_SKIMMER_PRODUCT_KEY = "00276aa006684c05805c297f60058c3d"
+# DC Runner series firmware — used by both return-pump and skimmer variants.
+DC_RUNNER_SERIES_PRODUCT_KEY = "00276aa006684c05805c297f60058c3d"
+# Speculative simpler variant (kept for backward-compat, never captured live).
+DC_RUNNER_LEGACY_PRODUCT_KEY = "8879684725d14066922374e50889f893"
+
+# Legacy names kept as aliases so old sim configs still work verbatim.
+DC_RUNNER_PRODUCT_KEY = DC_RUNNER_LEGACY_PRODUCT_KEY
+DC_SKIMMER_PRODUCT_KEY = DC_RUNNER_SERIES_PRODUCT_KEY
 
 PRODUCT_KEYS: dict[str, str] = {
     "smartdrift": SMARTDRIFT_PRODUCT_KEY,
-    "dc_runner": DC_RUNNER_PRODUCT_KEY,
-    "dc_skimmer": DC_SKIMMER_PRODUCT_KEY,
+    # dc_runner keeps its speculative legacy key so old configs behave as before.
+    "dc_runner": DC_RUNNER_LEGACY_PRODUCT_KEY,
+    # dc_runner_return is the modern return-pump variant that shares the DC Runner
+    # series firmware with the skimmer — same product_key, same datapoint schema.
+    "dc_runner_return": DC_RUNNER_SERIES_PRODUCT_KEY,
+    "dc_skimmer": DC_RUNNER_SERIES_PRODUCT_KEY,
 }
 
 PRODUCT_NAMES: dict[str, str] = {
     "smartdrift": "Current_Pump",
     "dc_runner": "DC_Runner",
+    "dc_runner_return": "DC_Runner",
     "dc_skimmer": "DC_Runner",
 }
 
@@ -118,10 +129,11 @@ def _default_attrs_dc_runner() -> dict[str, Any]:
 
 
 def _default_attrs_dc_skimmer() -> dict[str, Any]:
-    """Initial attribute state for a DC Skimmer (DC Runner skimmer pump).
+    """Initial attribute state for the DC Runner series firmware.
 
-    Mirrors the writable status + fault datapoints reported by a real device
-    (see scripts/devices_datapoints/DC_RUNNER_*.json). Schedule blobs
+    Applies to both the DC Skimmer and the DC Runner return pump — they share
+    the same product_key and datapoint schema (verified against two independent
+    real captures: dev_alias "Abschäumer" and "AQD_032A44"). Schedule blobs
     (AutoTimeNN, YMDData, HMSData) are intentionally omitted — the integration
     does not expose them.
     """
@@ -148,6 +160,10 @@ def _default_attrs_dc_skimmer() -> dict[str, Any]:
 DEFAULT_ATTRS: dict[str, Any] = {
     "smartdrift": _default_attrs_smartdrift,
     "dc_runner": _default_attrs_dc_runner,
+    # DC Runner return pump: same firmware as the skimmer, so reuse the rich
+    # attribute defaults. Value differences (e.g. lower default motor speed
+    # for a return pump) are cosmetic and can be overridden per instance.
+    "dc_runner_return": _default_attrs_dc_skimmer,
     "dc_skimmer": _default_attrs_dc_skimmer,
 }
 

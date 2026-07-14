@@ -7,8 +7,27 @@ from functools import cached_property
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DC_RUNNER_PRODUCT_KEY, DC_RUNNER_SERIES_PRODUCT_KEY, DOMAIN
 from .coordinator import AquaMedicCoordinator, AquaMedicDeviceData
+
+
+# Product keys handled as the "DC Runner" line — return-pump and skimmer
+# variants share the DC Runner series firmware, and the speculative legacy PK
+# is also part of the DC Runner family branding.
+_DC_RUNNER_MODEL_PRODUCT_KEYS = frozenset(
+    {DC_RUNNER_PRODUCT_KEY, DC_RUNNER_SERIES_PRODUCT_KEY}
+)
+
+
+def resolve_model(product_key: str | None) -> str:
+    """Return the HA-visible model label for a given Gizwits product key.
+
+    Shared by AquaMedicEntity and AquaMedicLocalSwitchEntity (which cannot
+    inherit from AquaMedicEntity because of MRO conflicts with SwitchEntity).
+    """
+    if product_key in _DC_RUNNER_MODEL_PRODUCT_KEYS:
+        return "DC Runner"
+    return "SmartDrift"
 
 
 class AquaMedicEntity(CoordinatorEntity[AquaMedicCoordinator]):
@@ -47,11 +66,12 @@ class AquaMedicEntity(CoordinatorEntity[AquaMedicCoordinator]):
         """Build DeviceInfo from coordinator device data."""
         dev = self._device
         name = dev.name if dev else self._did
+        model = resolve_model(dev.product_key if dev else None)
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=name,
             manufacturer="Aqua Medic",
-            model="SmartDrift",
+            model=model,
         )
 
     # available is intentionally NOT overridden here.
