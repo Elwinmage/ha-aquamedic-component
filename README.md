@@ -28,11 +28,16 @@ Your device is not supported? Please contact me.
 | Device | | Internal Name | Product Key | Status |
 |---|---|---|---|---|
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | <img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/3cc74acc-aab7-4bbf-a386-51155cf11943" /> | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
-| Aqua Medic DC Runner x.1 / x.2 / x.3 (return pump) | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
-| Aqua Medic DC Runner (skimmer pump) | <img alt="skimmer" src="doc/img/skimmer.png" width="200" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
+| Aqua Medic DC Runner series — return pump | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
+| Aqua Medic DC Runner series — skimmer pump | <img alt="skimmer" src="doc/img/skimmer.png" width="200" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
+| Aqua Medic DC Runner (legacy / speculative) | | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
 | Aqua Medic Reefdoser EVO | <img width="458" height="458" alt="image" src="https://github.com/user-attachments/assets/b5e98032-9cea-4647-9443-18d4d68a275d" />| `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
 | Aqua Medic T-Controller Twin | | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
 | Aqua Medic Aquarius / Spectrus | | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
+
+> The DC Runner **return pump** and **skimmer pump** share the same firmware and Gizwits product key. They expose an identical datapoint set (verified against two independent real-device captures) and are handled by the same code path — the two rows above are the same device with different pump heads. In Home Assistant they both appear as model *DC Runner*; use the device alias to distinguish which pump is which.
+>
+> The `8879684725…` product key is a speculative simpler variant that has not (yet) been observed on real hardware; the code path is kept in place in case a device advertising this key shows up.
 
 All these devices use the Gizwits IoT platform (same backend as the official Aqua Medic app). Support for additional devices may be added in future releases.
 
@@ -99,27 +104,11 @@ Then restart Home Assistant.
 |---|---|
 | **Refresh** | Forces an immediate data refresh without waiting for the next poll interval |
 
-### DC Runner (return pump)
+### DC Runner series (return pump *and* skimmer pump)
 
-> 🧪 Support is implemented but **not yet tested on real hardware**. Feedback welcome.
+> ✅ Confirmed against two real device captures (return pump + skimmer). The two variants share the same firmware — Home Assistant displays them both as model *DC Runner*; the exact pump role (return / skimmer) is only distinguishable from your device alias.
 
-#### Switches
-
-| Entity | Description |
-|---|---|
-| **Power** | Main on/off |
-| **Feeding mode** | Pauses pump output for 10 minutes |
-| **0-10V control mode** | When on, disables the speed slider (pump driven by external 0-10V signal) |
-
-#### Numbers
-
-| Entity | Range | Description |
-|---|---|---|
-| **Flow rate** | 30–100 % | Pump speed (minimum 30 % — below this the motor may stall) |
-
-### DC Skimmer (DC Runner skimmer pump)
-
-> ✅ Based on a real device datapoint capture.
+> A legacy simpler variant with product key `8879684725…` (single `Flow` control, no scheduler) is also handled by the integration but has not been confirmed on real hardware.
 
 #### Switches
 
@@ -196,7 +185,7 @@ A Gizwits cloud simulator (`scripts/gizwits_simulator.py`) lets you test the int
 | `virtual_ip` | IP the simulator binds to (`127.0.0.1` skips virtual-IP setup) |
 | `interface` | Network interface for the virtual IP (optional; if omitted, the default-route interface is auto-detected, falling back to `eth0`; can be overridden with `-i/--interface`) |
 | `port` | Listening port (default `8080`) |
-| `devices` | List of `{ "type": ..., "count": N }`; available types: `smartdrift`, `dc_runner` (return pump), `dc_skimmer` |
+| `devices` | List of `{ "type": ..., "count": N }`; available types: `smartdrift`, `dc_runner` (legacy speculative variant), `dc_runner_return` (DC Runner series return pump), `dc_skimmer` (DC Runner series skimmer pump — same firmware as `dc_runner_return`) |
 
 Run it with `sudo python3 scripts/gizwits_simulator.py` (root is required to add the virtual IP).
 

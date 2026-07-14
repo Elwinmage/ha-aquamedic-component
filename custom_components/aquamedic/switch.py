@@ -24,7 +24,7 @@ from .const import (
     SMARTDRIFT_PRODUCT_KEY,
 )
 from .coordinator import AquaMedicCoordinator
-from .entity import AquaMedicEntity
+from .entity import AquaMedicEntity, resolve_model
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -262,16 +262,16 @@ class AquaMedicLocalSwitchEntity(  # type: ignore[misc, reportIncompatibleVariab
 
     @cached_property
     def device_info(self) -> DeviceInfo:  # type: ignore[reportIncompatibleVariableOverride]
-        from .const import DC_RUNNER_PRODUCT_KEY, DC_SKIMMER_PRODUCT_KEY
+        """Build DeviceInfo.
 
+        AquaMedicLocalSwitchEntity intentionally does NOT inherit from
+        AquaMedicEntity (MRO conflict with SwitchEntity), so we cannot rely
+        on the base class device_info. We reuse the shared model resolver to
+        keep the mapping DRY.
+        """
         dev = self.coordinator.data.get(self._did) if self.coordinator.data else None
         name = dev.name if dev else self._did
-        if dev and dev.product_key == DC_RUNNER_PRODUCT_KEY:
-            model = "DC Runner"
-        elif dev and dev.product_key == DC_SKIMMER_PRODUCT_KEY:
-            model = "DC Skimmer"
-        else:
-            model = "SmartDrift"
+        model = resolve_model(dev.product_key if dev else None)
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=name,
