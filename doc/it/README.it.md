@@ -167,6 +167,42 @@ Quindi riavviare Home Assistant.
 
 ---
 
+<!-- maintenance-section:start -->
+
+## Manutenzione
+
+L'integrazione tiene traccia delle attività di pulizia e usura di ogni pompa. Ogni attività espone tre entità: un **pulsante** per registrare che è fatta, un **cursore** per regolare l'intervallo e un **interruttore** per silenziarne gli avvisi. Nulla viene inviato al cloud: lo stato è salvato in locale, per voce di configurazione.
+
+La pompa di risalita DC Runner e la pompa dello schiumatoio condividono firmware e product key Gizwits, quindi l'API non può distinguerle. Dichiaralo una volta con il selettore **Ruolo della pompa**: l'elenco delle attività si adegua (l'integrazione si ricarica per applicarlo). Finché il ruolo è *Non definito*, una DC Runner non ha alcuna attività. Le EcoDrift / SmartDrift non lo chiedono mai.
+
+| Pompa | Attività | Predefinito | Intervallo |
+|---|---|---|---|
+| EcoDrift / SmartDrift | Pulire il rotore e il cestello filtrante | 2 | 1–3 |
+| EcoDrift / SmartDrift | Decalcificare la pompa | 6 | 3–9 |
+| EcoDrift / SmartDrift | Sostituire il rotore e i cuscinetti | 18 | 12–24 |
+| DC Runner (risalita) | Pulire il cestello di aspirazione | 6 w | 3–9 w |
+| DC Runner (risalita) | Pulire il rotore e la camera della pompa | 4 | 2–6 |
+| DC Runner (risalita) | Sostituire il rotore e i cuscinetti | 18 | 12–24 |
+| DC Runner (schiumatoio) | Pulire il bicchiere di raccolta | 2 w | 1–4 w |
+| DC Runner (schiumatoio) | Pulire il venturi e il tubo dell'aria | 4 w | 2–8 w |
+| DC Runner (schiumatoio) | Pulire la girante ad aghi | 2 | 1–4 |
+| DC Runner (schiumatoio) | Decalcificare il corpo dello schiumatoio | 6 | 3–12 |
+| DC Runner (schiumatoio) | Sostituire la girante ad aghi e i cuscinetti | 18 | 12–24 |
+
+> Valori in mesi salvo se seguiti da `w` (settimane). Aqua Medic non pubblica alcun intervallo numerico: questi valori derivano dalla pratica in acquario di barriera e sono regolabili pompa per pompa.
+
+### Notifiche
+
+L'integrazione non notifica mai da sola, di proposito. Se ne occupa il blueprint **Aqua Medic watch** incluso nel repository, che copre anche i guasti hardware e le pompe offline. Clicca il pulsante qui sotto e conferma l'importazione in Home Assistant:
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FElwinmage%2Fha-aquamedic-component%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Faquamedic_alerts.en.yaml)
+
+È disponibile una versione francese: [`aquamedic_alerts.fr.yaml`](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/blueprints/automation/aquamedic_alerts.fr.yaml).
+
+Le attività compaiono anche nella vista manutenzione di [ha-reef-card](https://github.com/Elwinmage/ha-reef-card), accanto a quelle Red Sea: entrambe le integrazioni pubblicano lo stesso contratto di entità `reef_role`.
+
+<!-- maintenance-section:end -->
+
 ## Configurazione
 
 Andare su **Impostazioni → Dispositivi e servizi → Aggiungi integrazione → Aqua Medic**.

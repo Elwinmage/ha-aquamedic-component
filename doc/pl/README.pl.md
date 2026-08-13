@@ -167,6 +167,42 @@ Następnie zrestartuj Home Assistant.
 
 ---
 
+<!-- maintenance-section:start -->
+
+## Konserwacja
+
+Integracja śledzi zadania czyszczenia i zużycia każdej pompy. Każde zadanie ma trzy encje: **przycisk** do odnotowania wykonania, **suwak** do zmiany interwału oraz **przełącznik** do wyciszenia jego powiadomień. Nic nie trafia do chmury — stan jest zapisywany lokalnie, dla każdego wpisu konfiguracji.
+
+Pompa obiegowa DC Runner i pompa odpieniacza mają to samo oprogramowanie i ten sam product key Gizwits, więc API ich nie rozróżnia. Zadeklaruj to raz w selektorze **Rola pompy** — lista zadań się dostosuje (integracja przeładuje się, aby to zastosować). Dopóki rola to *Nieokreślona*, DC Runner nie ma żadnego zadania. EcoDrift / SmartDrift nigdy o to nie pytają.
+
+| Pompa | Zadanie | Domyślnie | Zakres |
+|---|---|---|---|
+| EcoDrift / SmartDrift | Wyczyść wirnik i kosz filtra | 2 | 1–3 |
+| EcoDrift / SmartDrift | Odkamień pompę | 6 | 3–9 |
+| EcoDrift / SmartDrift | Wymień wirnik i łożyska | 18 | 12–24 |
+| DC Runner (obieg) | Wyczyść kosz ssawny | 6 w | 3–9 w |
+| DC Runner (obieg) | Wyczyść wirnik i komorę pompy | 4 | 2–6 |
+| DC Runner (obieg) | Wymień wirnik i łożyska | 18 | 12–24 |
+| DC Runner (odpieniacz) | Wyczyść kubek odpieniacza | 2 w | 1–4 w |
+| DC Runner (odpieniacz) | Wyczyść venturi i wężyk powietrza | 4 w | 2–8 w |
+| DC Runner (odpieniacz) | Wyczyść wirnik igiełkowy | 2 | 1–4 |
+| DC Runner (odpieniacz) | Odkamień korpus odpieniacza | 6 | 3–12 |
+| DC Runner (odpieniacz) | Wymień wirnik igiełkowy i łożyska | 18 | 12–24 |
+
+> Wartości w miesiącach, chyba że z `w` (tygodnie). Aqua Medic nie podaje żadnych liczb: te wartości pochodzą z praktyki akwarystyki rafowej i można je zmienić dla każdej pompy.
+
+### Powiadomienia
+
+Integracja celowo nigdy nie powiadamia sama. Robi to blueprint **Aqua Medic watch** dołączony do repozytorium, który obejmuje także awarie sprzętowe i pompy offline. Kliknij przycisk poniżej i potwierdź import w Home Assistant:
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FElwinmage%2Fha-aquamedic-component%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Faquamedic_alerts.en.yaml)
+
+Dostępna jest wersja francuska: [`aquamedic_alerts.fr.yaml`](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/blueprints/automation/aquamedic_alerts.fr.yaml).
+
+Zadania pojawiają się również w widoku konserwacji [ha-reef-card](https://github.com/Elwinmage/ha-reef-card), obok zadań Red Sea: obie integracje publikują ten sam kontrakt encji `reef_role`.
+
+<!-- maintenance-section:end -->
+
 ## Konfiguracja
 
 Przejdź do **Ustawienia → Urządzenia i usługi → Dodaj integrację → Aqua Medic**.

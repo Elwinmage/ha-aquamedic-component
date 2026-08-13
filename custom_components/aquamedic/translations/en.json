@@ -76,6 +76,39 @@
     "button": {
       "refresh": {
         "name": "Refresh"
+      },
+      "maint_drift_rotor_clean": {
+        "name": "Clean impeller and filter basket"
+      },
+      "maint_drift_descale": {
+        "name": "Descale pump"
+      },
+      "maint_drift_impeller_replace": {
+        "name": "Replace impeller and bearings"
+      },
+      "maint_runner_strainer_clean": {
+        "name": "Clean suction strainer"
+      },
+      "maint_runner_impeller_clean": {
+        "name": "Clean impeller and pump chamber"
+      },
+      "maint_runner_impeller_replace": {
+        "name": "Replace impeller and bearings"
+      },
+      "maint_skimmer_cup_clean": {
+        "name": "Clean collection cup"
+      },
+      "maint_skimmer_venturi_clean": {
+        "name": "Clean venturi and air line"
+      },
+      "maint_skimmer_needle_wheel_clean": {
+        "name": "Clean needle wheel"
+      },
+      "maint_skimmer_body_descale": {
+        "name": "Descale skimmer body"
+      },
+      "maint_skimmer_needle_wheel_replace": {
+        "name": "Replace needle wheel and bearings"
       }
     },
     "switch": {
@@ -93,6 +126,39 @@
       },
       "control_0_10v": {
         "name": "0-10V control mode"
+      },
+      "maint_drift_rotor_clean_notify": {
+        "name": "Clean impeller and filter basket (notifications)"
+      },
+      "maint_drift_descale_notify": {
+        "name": "Descale pump (notifications)"
+      },
+      "maint_drift_impeller_replace_notify": {
+        "name": "Replace impeller and bearings (notifications)"
+      },
+      "maint_runner_strainer_clean_notify": {
+        "name": "Clean suction strainer (notifications)"
+      },
+      "maint_runner_impeller_clean_notify": {
+        "name": "Clean impeller and pump chamber (notifications)"
+      },
+      "maint_runner_impeller_replace_notify": {
+        "name": "Replace impeller and bearings (notifications)"
+      },
+      "maint_skimmer_cup_clean_notify": {
+        "name": "Clean collection cup (notifications)"
+      },
+      "maint_skimmer_venturi_clean_notify": {
+        "name": "Clean venturi and air line (notifications)"
+      },
+      "maint_skimmer_needle_wheel_clean_notify": {
+        "name": "Clean needle wheel (notifications)"
+      },
+      "maint_skimmer_body_descale_notify": {
+        "name": "Descale skimmer body (notifications)"
+      },
+      "maint_skimmer_needle_wheel_replace_notify": {
+        "name": "Replace needle wheel and bearings (notifications)"
       }
     },
     "select": {
@@ -120,6 +186,14 @@
           "auto": "Auto",
           "feeding": "Feeding"
         }
+      },
+      "pump_role": {
+        "name": "Pump role",
+        "state": {
+          "unknown": "Not set",
+          "return": "Return pump",
+          "skimmer": "Skimmer pump"
+        }
       }
     },
     "number": {
@@ -140,6 +214,39 @@
       },
       "auto_feed_time": {
         "name": "Timer feeding time"
+      },
+      "maint_drift_rotor_clean_interval_months": {
+        "name": "Clean impeller and filter basket (months)"
+      },
+      "maint_drift_descale_interval_months": {
+        "name": "Descale pump (months)"
+      },
+      "maint_drift_impeller_replace_interval_months": {
+        "name": "Replace impeller and bearings (months)"
+      },
+      "maint_runner_strainer_clean_interval_weeks": {
+        "name": "Clean suction strainer (weeks)"
+      },
+      "maint_runner_impeller_clean_interval_months": {
+        "name": "Clean impeller and pump chamber (months)"
+      },
+      "maint_runner_impeller_replace_interval_months": {
+        "name": "Replace impeller and bearings (months)"
+      },
+      "maint_skimmer_cup_clean_interval_weeks": {
+        "name": "Clean collection cup (weeks)"
+      },
+      "maint_skimmer_venturi_clean_interval_weeks": {
+        "name": "Clean venturi and air line (weeks)"
+      },
+      "maint_skimmer_needle_wheel_clean_interval_months": {
+        "name": "Clean needle wheel (months)"
+      },
+      "maint_skimmer_body_descale_interval_months": {
+        "name": "Descale skimmer body (months)"
+      },
+      "maint_skimmer_needle_wheel_replace_interval_months": {
+        "name": "Replace needle wheel and bearings (months)"
       }
     },
     "binary_sensor": {

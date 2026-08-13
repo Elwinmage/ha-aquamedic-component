@@ -167,6 +167,42 @@ Puis redémarrez Home Assistant.
 
 ---
 
+<!-- maintenance-section:start -->
+
+## Maintenance
+
+L'intégration suit les tâches de nettoyage et d'usure de chaque pompe. Chaque tâche expose trois entités : un **bouton** pour enregistrer que c'est fait, un **curseur** pour ajuster l'intervalle, et un **interrupteur** pour couper ses alertes. Rien n'est envoyé au cloud — l'état est stocké localement, par entrée de configuration.
+
+La pompe de remontée DC Runner et l'écumeur DC Skimmer partagent le même firmware et la même product key Gizwits : l'API ne peut pas les distinguer. Déclarez-le une fois via le select **Rôle de la pompe**, la liste des tâches suit (l'intégration se recharge pour l'appliquer). Tant que le rôle est *Non défini*, une DC Runner n'a aucune tâche. Les EcoDrift / SmartDrift ne posent jamais la question.
+
+| Pompe | Tâche | Défaut | Plage |
+|---|---|---|---|
+| EcoDrift / SmartDrift | Nettoyer le rotor et le panier de filtration | 2 | 1–3 |
+| EcoDrift / SmartDrift | Détartrer la pompe | 6 | 3–9 |
+| EcoDrift / SmartDrift | Remplacer le rotor et les roulements | 18 | 12–24 |
+| DC Runner (remontée) | Nettoyer la crépine d'aspiration | 6 w | 3–9 w |
+| DC Runner (remontée) | Nettoyer le rotor et la chambre de pompe | 4 | 2–6 |
+| DC Runner (remontée) | Remplacer le rotor et les roulements | 18 | 12–24 |
+| DC Runner (écumeur) | Nettoyer le gobelet | 2 w | 1–4 w |
+| DC Runner (écumeur) | Nettoyer le venturi et le tuyau d'air | 4 w | 2–8 w |
+| DC Runner (écumeur) | Nettoyer le rotor à aiguilles | 2 | 1–4 |
+| DC Runner (écumeur) | Détartrer le corps de l'écumeur | 6 | 3–12 |
+| DC Runner (écumeur) | Remplacer le rotor à aiguilles et les roulements | 18 | 12–24 |
+
+> Valeurs en mois sauf si suivies de `w` (semaines). Aqua Medic ne publie aucun intervalle chiffré : ces valeurs viennent de la pratique récifale et sont toutes ajustables pompe par pompe.
+
+### Notifications
+
+L'intégration ne notifie jamais d'elle-même, volontairement. C'est le rôle du blueprint **Aqua Medic watch** livré avec le dépôt, qui couvre aussi les défauts matériels et les pompes hors ligne. Cliquez sur le bouton ci-dessous et confirmez l'import dans Home Assistant :
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FElwinmage%2Fha-aquamedic-component%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Faquamedic_alerts.en.yaml)
+
+Une version française est disponible : [`aquamedic_alerts.fr.yaml`](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/blueprints/automation/aquamedic_alerts.fr.yaml).
+
+Les tâches remontent aussi dans la vue maintenance de [ha-reef-card](https://github.com/Elwinmage/ha-reef-card), à côté de celles de Red Sea : les deux intégrations publient le même contrat d'entités `reef_role`.
+
+<!-- maintenance-section:end -->
+
 ## Configuration
 
 Aller dans **Paramètres → Appareils et services → Ajouter une intégration → Aqua Medic**.

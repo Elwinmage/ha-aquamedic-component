@@ -37,6 +37,39 @@
     "button": {
       "refresh": {
         "name": "Refresh"
+      },
+      "maint_drift_rotor_clean": {
+        "name": "Pulire il rotore e il cestello filtrante"
+      },
+      "maint_drift_descale": {
+        "name": "Decalcificare la pompa"
+      },
+      "maint_drift_impeller_replace": {
+        "name": "Sostituire il rotore e i cuscinetti"
+      },
+      "maint_runner_strainer_clean": {
+        "name": "Pulire il cestello di aspirazione"
+      },
+      "maint_runner_impeller_clean": {
+        "name": "Pulire il rotore e la camera della pompa"
+      },
+      "maint_runner_impeller_replace": {
+        "name": "Sostituire il rotore e i cuscinetti"
+      },
+      "maint_skimmer_cup_clean": {
+        "name": "Pulire il bicchiere di raccolta"
+      },
+      "maint_skimmer_venturi_clean": {
+        "name": "Pulire il venturi e il tubo dell'aria"
+      },
+      "maint_skimmer_needle_wheel_clean": {
+        "name": "Pulire la girante ad aghi"
+      },
+      "maint_skimmer_body_descale": {
+        "name": "Decalcificare il corpo dello schiumatoio"
+      },
+      "maint_skimmer_needle_wheel_replace": {
+        "name": "Sostituire la girante ad aghi e i cuscinetti"
       }
     },
     "switch": {
@@ -54,6 +87,39 @@
       },
       "control_0_10v": {
         "name": "0-10V control mode"
+      },
+      "maint_drift_rotor_clean_notify": {
+        "name": "Pulire il rotore e il cestello filtrante (notifiche)"
+      },
+      "maint_drift_descale_notify": {
+        "name": "Decalcificare la pompa (notifiche)"
+      },
+      "maint_drift_impeller_replace_notify": {
+        "name": "Sostituire il rotore e i cuscinetti (notifiche)"
+      },
+      "maint_runner_strainer_clean_notify": {
+        "name": "Pulire il cestello di aspirazione (notifiche)"
+      },
+      "maint_runner_impeller_clean_notify": {
+        "name": "Pulire il rotore e la camera della pompa (notifiche)"
+      },
+      "maint_runner_impeller_replace_notify": {
+        "name": "Sostituire il rotore e i cuscinetti (notifiche)"
+      },
+      "maint_skimmer_cup_clean_notify": {
+        "name": "Pulire il bicchiere di raccolta (notifiche)"
+      },
+      "maint_skimmer_venturi_clean_notify": {
+        "name": "Pulire il venturi e il tubo dell'aria (notifiche)"
+      },
+      "maint_skimmer_needle_wheel_clean_notify": {
+        "name": "Pulire la girante ad aghi (notifiche)"
+      },
+      "maint_skimmer_body_descale_notify": {
+        "name": "Decalcificare il corpo dello schiumatoio (notifiche)"
+      },
+      "maint_skimmer_needle_wheel_replace_notify": {
+        "name": "Sostituire la girante ad aghi e i cuscinetti (notifiche)"
       }
     },
     "select": {
@@ -81,6 +147,14 @@
           "auto": "Automatico",
           "feeding": "Alimentazione"
         }
+      },
+      "pump_role": {
+        "name": "Ruolo della pompa",
+        "state": {
+          "unknown": "Non definito",
+          "return": "Pompa di risalita",
+          "skimmer": "Pompa dello schiumatoio"
+        }
       }
     },
     "number": {
@@ -101,6 +175,39 @@
       },
       "auto_feed_time": {
         "name": "Durata alimentazione programmata"
+      },
+      "maint_drift_rotor_clean_interval_months": {
+        "name": "Pulire il rotore e il cestello filtrante (mesi)"
+      },
+      "maint_drift_descale_interval_months": {
+        "name": "Decalcificare la pompa (mesi)"
+      },
+      "maint_drift_impeller_replace_interval_months": {
+        "name": "Sostituire il rotore e i cuscinetti (mesi)"
+      },
+      "maint_runner_strainer_clean_interval_weeks": {
+        "name": "Pulire il cestello di aspirazione (settimane)"
+      },
+      "maint_runner_impeller_clean_interval_months": {
+        "name": "Pulire il rotore e la camera della pompa (mesi)"
+      },
+      "maint_runner_impeller_replace_interval_months": {
+        "name": "Sostituire il rotore e i cuscinetti (mesi)"
+      },
+      "maint_skimmer_cup_clean_interval_weeks": {
+        "name": "Pulire il bicchiere di raccolta (settimane)"
+      },
+      "maint_skimmer_venturi_clean_interval_weeks": {
+        "name": "Pulire il venturi e il tubo dell'aria (settimane)"
+      },
+      "maint_skimmer_needle_wheel_clean_interval_months": {
+        "name": "Pulire la girante ad aghi (mesi)"
+      },
+      "maint_skimmer_body_descale_interval_months": {
+        "name": "Decalcificare il corpo dello schiumatoio (mesi)"
+      },
+      "maint_skimmer_needle_wheel_replace_interval_months": {
+        "name": "Sostituire la girante ad aghi e i cuscinetti (mesi)"
       }
     },
     "binary_sensor": {

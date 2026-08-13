@@ -167,6 +167,42 @@ Starten Sie dann Home Assistant neu.
 
 ---
 
+<!-- maintenance-section:start -->
+
+## Wartung
+
+Die Integration verfolgt die Reinigungs- und Verschleißaufgaben jeder Pumpe. Jede Aufgabe hat drei Entitäten: einen **Button**, um die Erledigung zu erfassen, einen **Schieberegler** für das Intervall und einen **Schalter**, um ihre Meldungen stummzuschalten. Nichts wird in die Cloud gesendet — der Zustand wird lokal je Konfigurationseintrag gespeichert.
+
+Die DC-Runner-Rückförderpumpe und die DC-Skimmer-Pumpe teilen sich Firmware und Gizwits-Product-Key, die API kann sie also nicht unterscheiden. Legen Sie es einmal über die Auswahl **Pumpenrolle** fest, die Aufgabenliste folgt (die Integration lädt sich dafür neu). Solange die Rolle *Nicht festgelegt* ist, hat eine DC Runner keine Aufgabe. EcoDrift / SmartDrift fragen nie.
+
+| Pumpe | Aufgabe | Standard | Bereich |
+|---|---|---|---|
+| EcoDrift / SmartDrift | Rotor und Filterkorb reinigen | 2 | 1–3 |
+| EcoDrift / SmartDrift | Pumpe entkalken | 6 | 3–9 |
+| EcoDrift / SmartDrift | Rotor und Lager ersetzen | 18 | 12–24 |
+| DC Runner (Rückförderung) | Ansaugkorb reinigen | 6 w | 3–9 w |
+| DC Runner (Rückförderung) | Rotor und Pumpenkammer reinigen | 4 | 2–6 |
+| DC Runner (Rückförderung) | Rotor und Lager ersetzen | 18 | 12–24 |
+| DC Runner (Abschäumer) | Schaumtopf reinigen | 2 w | 1–4 w |
+| DC Runner (Abschäumer) | Venturi und Luftschlauch reinigen | 4 w | 2–8 w |
+| DC Runner (Abschäumer) | Nadelrad reinigen | 2 | 1–4 |
+| DC Runner (Abschäumer) | Abschäumerkörper entkalken | 6 | 3–12 |
+| DC Runner (Abschäumer) | Nadelrad und Lager ersetzen | 18 | 12–24 |
+
+> Werte in Monaten, außer mit `w` (Wochen). Aqua Medic nennt keine Zahlenwerte; diese Vorgaben stammen aus der Riffaquaristik-Praxis und sind alle pro Pumpe einstellbar.
+
+### Benachrichtigungen
+
+Die Integration benachrichtigt absichtlich nie selbst. Das übernimmt der mitgelieferte Blueprint **Aqua Medic watch**, der auch Hardwarefehler und Offline-Pumpen abdeckt. Klicken Sie auf die Schaltfläche unten und bestätigen Sie den Import in Home Assistant:
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FElwinmage%2Fha-aquamedic-component%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Faquamedic_alerts.en.yaml)
+
+Eine französische Fassung liegt als [`aquamedic_alerts.fr.yaml`](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/blueprints/automation/aquamedic_alerts.fr.yaml) bei.
+
+Die Aufgaben erscheinen auch in der Wartungsansicht von [ha-reef-card](https://github.com/Elwinmage/ha-reef-card), neben denen von Red Sea: beide Integrationen veröffentlichen denselben `reef_role`-Entitätsvertrag.
+
+<!-- maintenance-section:end -->
+
 ## Konfiguration
 
 Gehen Sie zu **Einstellungen → Geräte & Dienste → Integration hinzufügen → Aqua Medic**.

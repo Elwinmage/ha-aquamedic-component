@@ -37,6 +37,39 @@
     "button": {
       "refresh": {
         "name": "Refresh"
+      },
+      "maint_drift_rotor_clean": {
+        "name": "Limpiar el rotor y la cesta de filtración"
+      },
+      "maint_drift_descale": {
+        "name": "Descalcificar la bomba"
+      },
+      "maint_drift_impeller_replace": {
+        "name": "Sustituir el rotor y los rodamientos"
+      },
+      "maint_runner_strainer_clean": {
+        "name": "Limpiar la cesta de aspiración"
+      },
+      "maint_runner_impeller_clean": {
+        "name": "Limpiar el rotor y la cámara de la bomba"
+      },
+      "maint_runner_impeller_replace": {
+        "name": "Sustituir el rotor y los rodamientos"
+      },
+      "maint_skimmer_cup_clean": {
+        "name": "Limpiar el vaso colector"
+      },
+      "maint_skimmer_venturi_clean": {
+        "name": "Limpiar el venturi y el tubo de aire"
+      },
+      "maint_skimmer_needle_wheel_clean": {
+        "name": "Limpiar el rotor de agujas"
+      },
+      "maint_skimmer_body_descale": {
+        "name": "Descalcificar el cuerpo del skimmer"
+      },
+      "maint_skimmer_needle_wheel_replace": {
+        "name": "Sustituir el rotor de agujas y los rodamientos"
       }
     },
     "switch": {
@@ -54,6 +87,39 @@
       },
       "control_0_10v": {
         "name": "0-10V control mode"
+      },
+      "maint_drift_rotor_clean_notify": {
+        "name": "Limpiar el rotor y la cesta de filtración (notificaciones)"
+      },
+      "maint_drift_descale_notify": {
+        "name": "Descalcificar la bomba (notificaciones)"
+      },
+      "maint_drift_impeller_replace_notify": {
+        "name": "Sustituir el rotor y los rodamientos (notificaciones)"
+      },
+      "maint_runner_strainer_clean_notify": {
+        "name": "Limpiar la cesta de aspiración (notificaciones)"
+      },
+      "maint_runner_impeller_clean_notify": {
+        "name": "Limpiar el rotor y la cámara de la bomba (notificaciones)"
+      },
+      "maint_runner_impeller_replace_notify": {
+        "name": "Sustituir el rotor y los rodamientos (notificaciones)"
+      },
+      "maint_skimmer_cup_clean_notify": {
+        "name": "Limpiar el vaso colector (notificaciones)"
+      },
+      "maint_skimmer_venturi_clean_notify": {
+        "name": "Limpiar el venturi y el tubo de aire (notificaciones)"
+      },
+      "maint_skimmer_needle_wheel_clean_notify": {
+        "name": "Limpiar el rotor de agujas (notificaciones)"
+      },
+      "maint_skimmer_body_descale_notify": {
+        "name": "Descalcificar el cuerpo del skimmer (notificaciones)"
+      },
+      "maint_skimmer_needle_wheel_replace_notify": {
+        "name": "Sustituir el rotor de agujas y los rodamientos (notificaciones)"
       }
     },
     "select": {
@@ -81,6 +147,14 @@
           "auto": "Automático",
           "feeding": "Alimentación"
         }
+      },
+      "pump_role": {
+        "name": "Función de la bomba",
+        "state": {
+          "unknown": "Sin definir",
+          "return": "Bomba de retorno",
+          "skimmer": "Bomba de skimmer"
+        }
       }
     },
     "number": {
@@ -101,6 +175,39 @@
       },
       "auto_feed_time": {
         "name": "Tiempo de alimentación programado"
+      },
+      "maint_drift_rotor_clean_interval_months": {
+        "name": "Limpiar el rotor y la cesta de filtración (meses)"
+      },
+      "maint_drift_descale_interval_months": {
+        "name": "Descalcificar la bomba (meses)"
+      },
+      "maint_drift_impeller_replace_interval_months": {
+        "name": "Sustituir el rotor y los rodamientos (meses)"
+      },
+      "maint_runner_strainer_clean_interval_weeks": {
+        "name": "Limpiar la cesta de aspiración (semanas)"
+      },
+      "maint_runner_impeller_clean_interval_months": {
+        "name": "Limpiar el rotor y la cámara de la bomba (meses)"
+      },
+      "maint_runner_impeller_replace_interval_months": {
+        "name": "Sustituir el rotor y los rodamientos (meses)"
+      },
+      "maint_skimmer_cup_clean_interval_weeks": {
+        "name": "Limpiar el vaso colector (semanas)"
+      },
+      "maint_skimmer_venturi_clean_interval_weeks": {
+        "name": "Limpiar el venturi y el tubo de aire (semanas)"
+      },
+      "maint_skimmer_needle_wheel_clean_interval_months": {
+        "name": "Limpiar el rotor de agujas (meses)"
+      },
+      "maint_skimmer_body_descale_interval_months": {
+        "name": "Descalcificar el cuerpo del skimmer (meses)"
+      },
+      "maint_skimmer_needle_wheel_replace_interval_months": {
+        "name": "Sustituir el rotor de agujas y los rodamientos (meses)"
       }
     },
     "binary_sensor": {

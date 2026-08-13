@@ -37,6 +37,39 @@
     "button": {
       "refresh": {
         "name": "Refresh"
+      },
+      "maint_drift_rotor_clean": {
+        "name": "Rotor en filterkorf reinigen"
+      },
+      "maint_drift_descale": {
+        "name": "Pomp ontkalken"
+      },
+      "maint_drift_impeller_replace": {
+        "name": "Rotor en lagers vervangen"
+      },
+      "maint_runner_strainer_clean": {
+        "name": "Aanzuigkorf reinigen"
+      },
+      "maint_runner_impeller_clean": {
+        "name": "Rotor en pompkamer reinigen"
+      },
+      "maint_runner_impeller_replace": {
+        "name": "Rotor en lagers vervangen"
+      },
+      "maint_skimmer_cup_clean": {
+        "name": "Opvangbeker reinigen"
+      },
+      "maint_skimmer_venturi_clean": {
+        "name": "Venturi en luchtslang reinigen"
+      },
+      "maint_skimmer_needle_wheel_clean": {
+        "name": "Naaldrotor reinigen"
+      },
+      "maint_skimmer_body_descale": {
+        "name": "Skimmerbehuizing ontkalken"
+      },
+      "maint_skimmer_needle_wheel_replace": {
+        "name": "Naaldrotor en lagers vervangen"
       }
     },
     "switch": {
@@ -54,6 +87,39 @@
       },
       "control_0_10v": {
         "name": "0-10V control mode"
+      },
+      "maint_drift_rotor_clean_notify": {
+        "name": "Rotor en filterkorf reinigen (meldingen)"
+      },
+      "maint_drift_descale_notify": {
+        "name": "Pomp ontkalken (meldingen)"
+      },
+      "maint_drift_impeller_replace_notify": {
+        "name": "Rotor en lagers vervangen (meldingen)"
+      },
+      "maint_runner_strainer_clean_notify": {
+        "name": "Aanzuigkorf reinigen (meldingen)"
+      },
+      "maint_runner_impeller_clean_notify": {
+        "name": "Rotor en pompkamer reinigen (meldingen)"
+      },
+      "maint_runner_impeller_replace_notify": {
+        "name": "Rotor en lagers vervangen (meldingen)"
+      },
+      "maint_skimmer_cup_clean_notify": {
+        "name": "Opvangbeker reinigen (meldingen)"
+      },
+      "maint_skimmer_venturi_clean_notify": {
+        "name": "Venturi en luchtslang reinigen (meldingen)"
+      },
+      "maint_skimmer_needle_wheel_clean_notify": {
+        "name": "Naaldrotor reinigen (meldingen)"
+      },
+      "maint_skimmer_body_descale_notify": {
+        "name": "Skimmerbehuizing ontkalken (meldingen)"
+      },
+      "maint_skimmer_needle_wheel_replace_notify": {
+        "name": "Naaldrotor en lagers vervangen (meldingen)"
       }
     },
     "select": {
@@ -81,6 +147,14 @@
           "auto": "Automatisch",
           "feeding": "Voeren"
         }
+      },
+      "pump_role": {
+        "name": "Pomprol",
+        "state": {
+          "unknown": "Niet ingesteld",
+          "return": "Opvoerpomp",
+          "skimmer": "Skimmerpomp"
+        }
       }
     },
     "number": {
@@ -101,6 +175,39 @@
       },
       "auto_feed_time": {
         "name": "Timer-voedertijd"
+      },
+      "maint_drift_rotor_clean_interval_months": {
+        "name": "Rotor en filterkorf reinigen (maanden)"
+      },
+      "maint_drift_descale_interval_months": {
+        "name": "Pomp ontkalken (maanden)"
+      },
+      "maint_drift_impeller_replace_interval_months": {
+        "name": "Rotor en lagers vervangen (maanden)"
+      },
+      "maint_runner_strainer_clean_interval_weeks": {
+        "name": "Aanzuigkorf reinigen (weken)"
+      },
+      "maint_runner_impeller_clean_interval_months": {
+        "name": "Rotor en pompkamer reinigen (maanden)"
+      },
+      "maint_runner_impeller_replace_interval_months": {
+        "name": "Rotor en lagers vervangen (maanden)"
+      },
+      "maint_skimmer_cup_clean_interval_weeks": {
+        "name": "Opvangbeker reinigen (weken)"
+      },
+      "maint_skimmer_venturi_clean_interval_weeks": {
+        "name": "Venturi en luchtslang reinigen (weken)"
+      },
+      "maint_skimmer_needle_wheel_clean_interval_months": {
+        "name": "Naaldrotor reinigen (maanden)"
+      },
+      "maint_skimmer_body_descale_interval_months": {
+        "name": "Skimmerbehuizing ontkalken (maanden)"
+      },
+      "maint_skimmer_needle_wheel_replace_interval_months": {
+        "name": "Naaldrotor en lagers vervangen (maanden)"
       }
     },
     "binary_sensor": {

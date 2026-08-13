@@ -37,6 +37,39 @@
     "button": {
       "refresh": {
         "name": "Refresh"
+      },
+      "maint_drift_rotor_clean": {
+        "name": "Limpar o rotor e o cesto de filtragem"
+      },
+      "maint_drift_descale": {
+        "name": "Descalcificar a bomba"
+      },
+      "maint_drift_impeller_replace": {
+        "name": "Substituir o rotor e os rolamentos"
+      },
+      "maint_runner_strainer_clean": {
+        "name": "Limpar o cesto de aspiração"
+      },
+      "maint_runner_impeller_clean": {
+        "name": "Limpar o rotor e a câmara da bomba"
+      },
+      "maint_runner_impeller_replace": {
+        "name": "Substituir o rotor e os rolamentos"
+      },
+      "maint_skimmer_cup_clean": {
+        "name": "Limpar o copo coletor"
+      },
+      "maint_skimmer_venturi_clean": {
+        "name": "Limpar o venturi e o tubo de ar"
+      },
+      "maint_skimmer_needle_wheel_clean": {
+        "name": "Limpar o rotor de agulhas"
+      },
+      "maint_skimmer_body_descale": {
+        "name": "Descalcificar o corpo do escumador"
+      },
+      "maint_skimmer_needle_wheel_replace": {
+        "name": "Substituir o rotor de agulhas e os rolamentos"
       }
     },
     "switch": {
@@ -54,6 +87,39 @@
       },
       "control_0_10v": {
         "name": "0-10V control mode"
+      },
+      "maint_drift_rotor_clean_notify": {
+        "name": "Limpar o rotor e o cesto de filtragem (notificações)"
+      },
+      "maint_drift_descale_notify": {
+        "name": "Descalcificar a bomba (notificações)"
+      },
+      "maint_drift_impeller_replace_notify": {
+        "name": "Substituir o rotor e os rolamentos (notificações)"
+      },
+      "maint_runner_strainer_clean_notify": {
+        "name": "Limpar o cesto de aspiração (notificações)"
+      },
+      "maint_runner_impeller_clean_notify": {
+        "name": "Limpar o rotor e a câmara da bomba (notificações)"
+      },
+      "maint_runner_impeller_replace_notify": {
+        "name": "Substituir o rotor e os rolamentos (notificações)"
+      },
+      "maint_skimmer_cup_clean_notify": {
+        "name": "Limpar o copo coletor (notificações)"
+      },
+      "maint_skimmer_venturi_clean_notify": {
+        "name": "Limpar o venturi e o tubo de ar (notificações)"
+      },
+      "maint_skimmer_needle_wheel_clean_notify": {
+        "name": "Limpar o rotor de agulhas (notificações)"
+      },
+      "maint_skimmer_body_descale_notify": {
+        "name": "Descalcificar o corpo do escumador (notificações)"
+      },
+      "maint_skimmer_needle_wheel_replace_notify": {
+        "name": "Substituir o rotor de agulhas e os rolamentos (notificações)"
       }
     },
     "select": {
@@ -81,6 +147,14 @@
           "auto": "Automático",
           "feeding": "Alimentação"
         }
+      },
+      "pump_role": {
+        "name": "Função da bomba",
+        "state": {
+          "unknown": "Não definido",
+          "return": "Bomba de retorno",
+          "skimmer": "Bomba do escumador"
+        }
       }
     },
     "number": {
@@ -101,6 +175,39 @@
       },
       "auto_feed_time": {
         "name": "Tempo de alimentação programado"
+      },
+      "maint_drift_rotor_clean_interval_months": {
+        "name": "Limpar o rotor e o cesto de filtragem (meses)"
+      },
+      "maint_drift_descale_interval_months": {
+        "name": "Descalcificar a bomba (meses)"
+      },
+      "maint_drift_impeller_replace_interval_months": {
+        "name": "Substituir o rotor e os rolamentos (meses)"
+      },
+      "maint_runner_strainer_clean_interval_weeks": {
+        "name": "Limpar o cesto de aspiração (semanas)"
+      },
+      "maint_runner_impeller_clean_interval_months": {
+        "name": "Limpar o rotor e a câmara da bomba (meses)"
+      },
+      "maint_runner_impeller_replace_interval_months": {
+        "name": "Substituir o rotor e os rolamentos (meses)"
+      },
+      "maint_skimmer_cup_clean_interval_weeks": {
+        "name": "Limpar o copo coletor (semanas)"
+      },
+      "maint_skimmer_venturi_clean_interval_weeks": {
+        "name": "Limpar o venturi e o tubo de ar (semanas)"
+      },
+      "maint_skimmer_needle_wheel_clean_interval_months": {
+        "name": "Limpar o rotor de agulhas (meses)"
+      },
+      "maint_skimmer_body_descale_interval_months": {
+        "name": "Descalcificar o corpo do escumador (meses)"
+      },
+      "maint_skimmer_needle_wheel_replace_interval_months": {
+        "name": "Substituir o rotor de agulhas e os rolamentos (meses)"
       }
     },
     "binary_sensor": {

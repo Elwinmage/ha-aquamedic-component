@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .client import AquaMedicClient, AquaMedicConnectionError
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .maintenance import MaintenanceStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,6 +38,13 @@ class AquaMedicCoordinator(DataUpdateCoordinator[dict[str, AquaMedicDeviceData]]
     ``control_0_10v``  — per-device local flag: when True, the pump is driven
                          by an external 0-10V signal and the Flow number entity
                          must be disabled.
+    ``maintenance``    — persistent maintenance state, attached by
+                         ``async_setup_entry``. Optional so tests and
+                         standalone use keep working: platforms go through
+                         ``maintenance.get_store()``, which falls back to an
+                         ephemeral store.
+    ``entry_id``       — owning config entry, needed to reload the entry when
+                         the user changes a pump role.
     """
 
     def __init__(
@@ -44,8 +52,11 @@ class AquaMedicCoordinator(DataUpdateCoordinator[dict[str, AquaMedicDeviceData]]
         hass: HomeAssistant,
         client: AquaMedicClient,
         scan_interval: int = DEFAULT_SCAN_INTERVAL,
+        entry_id: str | None = None,
     ) -> None:
         self._client = client
+        self.entry_id = entry_id
+        self.maintenance: MaintenanceStore | None = None
         # Local state: did → bool (0-10V mode active)
         self._control_0_10v: dict[str, bool] = {}
         super().__init__(

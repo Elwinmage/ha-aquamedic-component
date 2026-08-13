@@ -76,6 +76,39 @@
     "button": {
       "refresh": {
         "name": "Actualiser"
+      },
+      "maint_drift_rotor_clean": {
+        "name": "Nettoyer le rotor et le panier de filtration"
+      },
+      "maint_drift_descale": {
+        "name": "Détartrer la pompe"
+      },
+      "maint_drift_impeller_replace": {
+        "name": "Remplacer le rotor et les roulements"
+      },
+      "maint_runner_strainer_clean": {
+        "name": "Nettoyer la crépine d'aspiration"
+      },
+      "maint_runner_impeller_clean": {
+        "name": "Nettoyer le rotor et la chambre de pompe"
+      },
+      "maint_runner_impeller_replace": {
+        "name": "Remplacer le rotor et les roulements"
+      },
+      "maint_skimmer_cup_clean": {
+        "name": "Nettoyer le gobelet"
+      },
+      "maint_skimmer_venturi_clean": {
+        "name": "Nettoyer le venturi et le tuyau d'air"
+      },
+      "maint_skimmer_needle_wheel_clean": {
+        "name": "Nettoyer le rotor à aiguilles"
+      },
+      "maint_skimmer_body_descale": {
+        "name": "Détartrer le corps de l'écumeur"
+      },
+      "maint_skimmer_needle_wheel_replace": {
+        "name": "Remplacer le rotor à aiguilles et les roulements"
       }
     },
     "switch": {
@@ -93,6 +126,39 @@
       },
       "control_0_10v": {
         "name": "Mode contrôle 0-10V"
+      },
+      "maint_drift_rotor_clean_notify": {
+        "name": "Nettoyer le rotor et le panier de filtration (notifications)"
+      },
+      "maint_drift_descale_notify": {
+        "name": "Détartrer la pompe (notifications)"
+      },
+      "maint_drift_impeller_replace_notify": {
+        "name": "Remplacer le rotor et les roulements (notifications)"
+      },
+      "maint_runner_strainer_clean_notify": {
+        "name": "Nettoyer la crépine d'aspiration (notifications)"
+      },
+      "maint_runner_impeller_clean_notify": {
+        "name": "Nettoyer le rotor et la chambre de pompe (notifications)"
+      },
+      "maint_runner_impeller_replace_notify": {
+        "name": "Remplacer le rotor et les roulements (notifications)"
+      },
+      "maint_skimmer_cup_clean_notify": {
+        "name": "Nettoyer le gobelet (notifications)"
+      },
+      "maint_skimmer_venturi_clean_notify": {
+        "name": "Nettoyer le venturi et le tuyau d'air (notifications)"
+      },
+      "maint_skimmer_needle_wheel_clean_notify": {
+        "name": "Nettoyer le rotor à aiguilles (notifications)"
+      },
+      "maint_skimmer_body_descale_notify": {
+        "name": "Détartrer le corps de l'écumeur (notifications)"
+      },
+      "maint_skimmer_needle_wheel_replace_notify": {
+        "name": "Remplacer le rotor à aiguilles et les roulements (notifications)"
       }
     },
     "select": {
@@ -120,6 +186,14 @@
           "auto": "Automatique",
           "feeding": "Alimentation"
         }
+      },
+      "pump_role": {
+        "name": "Rôle de la pompe",
+        "state": {
+          "unknown": "Non défini",
+          "return": "Pompe de remontée",
+          "skimmer": "Pompe d'écumeur"
+        }
       }
     },
     "number": {
@@ -140,6 +214,39 @@
       },
       "auto_feed_time": {
         "name": "Durée d'alimentation programmée"
+      },
+      "maint_drift_rotor_clean_interval_months": {
+        "name": "Nettoyer le rotor et le panier de filtration (mois)"
+      },
+      "maint_drift_descale_interval_months": {
+        "name": "Détartrer la pompe (mois)"
+      },
+      "maint_drift_impeller_replace_interval_months": {
+        "name": "Remplacer le rotor et les roulements (mois)"
+      },
+      "maint_runner_strainer_clean_interval_weeks": {
+        "name": "Nettoyer la crépine d'aspiration (semaines)"
+      },
+      "maint_runner_impeller_clean_interval_months": {
+        "name": "Nettoyer le rotor et la chambre de pompe (mois)"
+      },
+      "maint_runner_impeller_replace_interval_months": {
+        "name": "Remplacer le rotor et les roulements (mois)"
+      },
+      "maint_skimmer_cup_clean_interval_weeks": {
+        "name": "Nettoyer le gobelet (semaines)"
+      },
+      "maint_skimmer_venturi_clean_interval_weeks": {
+        "name": "Nettoyer le venturi et le tuyau d'air (semaines)"
+      },
+      "maint_skimmer_needle_wheel_clean_interval_months": {
+        "name": "Nettoyer le rotor à aiguilles (mois)"
+      },
+      "maint_skimmer_body_descale_interval_months": {
+        "name": "Détartrer le corps de l'écumeur (mois)"
+      },
+      "maint_skimmer_needle_wheel_replace_interval_months": {
+        "name": "Remplacer le rotor à aiguilles et les roulements (mois)"
       }
     },
     "binary_sensor": {

@@ -1,0 +1,306 @@
+# Blueprint d'alertes pour l'intégration `aquamedic`.
+#
+# Version: 0.1.0
+# Changelog:
+#   0.1.0 - Version initiale. Surveille les défauts matériels (7 flags
+#           Fault_*), les équipements injoignables, les pompes hors ligne et
+#           les maintenances en retard (`button.*` dont `reef_role` commence
+#           par `maint_`, contrat partagé avec ha-reefbeat-component).
+
+blueprint:
+  name: Aqua Medic watch (aquamedic) — v0.1.0
+  description: >
+    **Version 0.1.0** — Notifications pour les équipements Aqua Medic de
+    l'intégration `aquamedic`.
+
+
+    Surveille automatiquement **tous** les appareils de l'intégration
+    (EcoDrift / SmartDrift, DC Runner, DC Skimmer). L'ajout ou le retrait
+    d'un appareil est pris en compte au cycle suivant.
+
+
+    **Conditions surveillées (chacune activable, avec exclusions par
+    appareil) :**
+
+
+    - Défaut matériel (surintensité, surtension, sous-tension, surchauffe,
+    rotor bloqué, marche à sec, communication UART)
+
+    - Pompe hors ligne (le cloud Gizwits ne répond plus pour cet appareil)
+
+    - Équipement injoignable (toutes les entités `unavailable`)
+
+    - Maintenance en retard (`days_left` < 0)
+
+
+    **Variables disponibles dans vos actions de notification :**
+    `{{ title }}`, `{{ message }}`, `{{ alert_type }}`, `{{ device_name }}`,
+    `{{ model }}`.
+
+
+    **Identification des entités :** l'intégration expose l'attribut
+    `reef_role` (mixin `ReefRoleMixin`), utilisé en priorité — robuste et
+    indépendant de la langue d'installation.
+  domain: automation
+  source_url: https://github.com/Elwinmage/ha-aquamedic-component
+  input:
+    notify_section:
+      name: Destinataires des notifications
+      icon: mdi:bell-outline
+      input:
+        notify_devices:
+          name: Appareils mobiles à notifier
+          description: >
+            Sélectionnez le ou les appareils qui recevront les notifications.
+            Seuls les téléphones/tablettes enregistrés via l'application
+            Home Assistant Companion sont listés. Une notification est
+            envoyée par appareil ; un tag unique par (appareil, type
+            d'alerte) est ajouté pour que les nouvelles notifications
+            remplacent les anciennes au lieu de s'empiler.
+          selector:
+            device:
+              integration: mobile_app
+              multiple: true
+        notify_channel:
+          name: Canal Android (optionnel)
+          description: >
+            Nom de canal passé dans `data.channel`. Permet de regrouper les
+            notifications Aqua Medic et de leur appliquer un son / une
+            priorité dédiés depuis l'application HA. Laisser vide pour le
+            canal par défaut. iOS ignore ce champ.
+          default: "Aqua Medic"
+          selector:
+            text:
+
+    fault_section:
+      name: Défaut matériel
+      icon: mdi:alert-octagon
+      input:
+        notify_fault:
+          name: Activer
+          description: >
+            Alerte quand un `binary_sensor` de défaut passe à `on`
+            (surintensité, surtension, sous-tension, surchauffe, rotor
+            bloqué, marche à sec, communication UART).
+          default: true
+          selector: { boolean: {} }
+        fault_exclude:
+          name: Exclure ces équipements
+          default: []
+          selector:
+            device:
+              integration: aquamedic
+              multiple: true
+
+    offline_section:
+      name: Pompe hors ligne
+      icon: mdi:cloud-off-outline
+      input:
+        notify_offline:
+          name: Activer
+          description: >
+            Alerte quand toutes les entités pilotables d'un appareil sont
+            `unavailable` alors que l'intégration, elle, répond : le cloud
+            Gizwits ne voit plus la pompe.
+          default: true
+          selector: { boolean: {} }
+        offline_exclude:
+          name: Exclure ces équipements
+          default: []
+          selector:
+            device:
+              integration: aquamedic
+              multiple: true
+
+    maintenance_section:
+      name: Maintenance en retard
+      icon: mdi:wrench-clock
+      input:
+        notify_maintenance:
+          name: Activer
+          description: >
+            Alerte quand un bouton de maintenance a un attribut `days_left`
+            < 0 (échéance dépassée). Cible toutes les entités `button` dont
+            `reef_role` commence par `maint_`.
+          default: true
+          selector: { boolean: {} }
+        maintenance_exclude:
+          name: Exclure ces équipements
+          default: []
+          selector:
+            device:
+              integration: aquamedic
+              multiple: true
+        maintenance_respect_switch:
+          name: Respecter les interrupteurs de notification par tâche
+          description: >
+            Quand c'est activé, une tâche dont l'interrupteur
+            « (notifications) » est éteint est ignorée, même en retard.
+            Laissez activé sauf si vous voulez l'alerte quels que soient les
+            interrupteurs.
+          default: true
+          selector: { boolean: {} }
+
+trigger:
+  - platform: time_pattern
+    minutes: "/5"
+
+variables:
+  notify_fault: !input notify_fault
+  notify_offline: !input notify_offline
+  notify_maintenance: !input notify_maintenance
+  notify_devices: !input notify_devices
+  notify_channel: !input notify_channel
+  fault_exclude: !input fault_exclude
+  offline_exclude: !input offline_exclude
+  maintenance_exclude: !input maintenance_exclude
+  maintenance_respect_switch: !input maintenance_respect_switch
+  # Préfixe de rôle exposé par ReefRoleMixin.
+  role_maintenance_prefix: "maint_"
+
+action:
+  - alias: "Collecter toutes les entités des appareils aquamedic"
+    variables:
+      ents: >
+        {%- set res = [] -%}
+        {%- for d in device_entities('aquamedic') -%}
+          {%- set res = res + [d] -%}
+        {%- endfor -%}
+        {{ res }}
+
+  - alias: "Construire la liste des alertes"
+    variables:
+      alerts: >
+        {%- set ns = namespace(items=[], dev_ents={}) -%}
+
+        {#- Regroupement des entités par appareil : sert à détecter une
+            pompe entièrement injoignable. -#}
+        {%- for e in ents -%}
+          {%- set d = device_id(e) -%}
+          {%- if d -%}
+            {%- set lst = ns.dev_ents.get(d, []) + [e] -%}
+            {%- set ns.dev_ents = dict(ns.dev_ents, **{d: lst}) -%}
+          {%- endif -%}
+        {%- endfor -%}
+
+        {#- 1) Pompe hors ligne : toutes les entités « cloud » de l'appareil
+            sont `unavailable`. Les entités locales (maintenance, rôle de la
+            pompe, bouton de rafraîchissement) restent disponibles quoi qu'il
+            arrive : on les écarte, sinon aucun appareil ne paraîtrait jamais
+            injoignable. -#}
+        {%- if notify_offline -%}
+          {%- for d, dents in ns.dev_ents.items() -%}
+            {%- if d not in offline_exclude -%}
+              {%- set nsd = namespace(cloud=[]) -%}
+              {%- for e in dents -%}
+                {%- set r = state_attr(e, 'reef_role') or '' -%}
+                {%- if e.split('.')[0] in ['switch', 'select', 'number', 'binary_sensor']
+                       and not r.startswith('maint_')
+                       and r != 'pump_role' -%}
+                  {%- set nsd.cloud = nsd.cloud + [e] -%}
+                {%- endif -%}
+              {%- endfor -%}
+              {%- set total = nsd.cloud | count -%}
+              {%- set unav = nsd.cloud | select('is_state', 'unavailable') | list | count -%}
+              {%- if total > 0 and unav == total -%}
+                {%- set ns.items = ns.items + [{
+                  'type': 'offline',
+                  'device': device_attr(d, 'name_by_user') or device_attr(d, 'name') or d,
+                  'model': device_attr(d, 'model') or '',
+                  'message': 'Pompe injoignable (hors ligne)',
+                }] -%}
+              {%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+
+        {#- 2) Contrôles par entité. -#}
+        {%- for e in ents -%}
+          {%- set s = states(e) -%}
+          {%- set d = device_id(e) -%}
+          {%- set dname = (d and (device_attr(d, 'name_by_user') or device_attr(d, 'name'))) or e -%}
+          {%- set model = (d and device_attr(d, 'model')) or '' -%}
+
+          {%- if s not in ['unavailable', 'unknown', 'none', 'None', '', None] -%}
+
+            {#- Défaut matériel : binary_sensor.* dont le reef_role commence
+                par "fault_", état "on". -#}
+            {%- if notify_fault
+                   and e.startswith('binary_sensor.')
+                   and s == 'on'
+                   and (state_attr(e, 'reef_role') or '').startswith('fault_')
+                   and d not in fault_exclude -%}
+              {%- set ns.items = ns.items + [{
+                'type': 'fault',
+                'device': dname,
+                'model': model,
+                'message': 'Défaut: ' ~ (state_attr(e, 'friendly_name') or e),
+              }] -%}
+            {%- endif -%}
+
+            {#- Maintenance en retard : button.* dont le reef_role commence
+                par "maint_" et dont `days_left` est négatif. Le bouton est
+                l'unique source de vérité (voir AquaMedicMaintenanceButton). -#}
+            {%- if notify_maintenance
+                   and e.startswith('button.')
+                   and (state_attr(e, 'reef_role') or '').startswith(role_maintenance_prefix)
+                   and d not in maintenance_exclude -%}
+              {#- Opt-out par tâche : le bouton recopie l'état de son
+                  interrupteur compagnon dans l'attribut `notify`. -#}
+              {%- set notify_flag = state_attr(e, 'notify') -%}
+              {%- set muted = maintenance_respect_switch and notify_flag is false -%}
+              {%- set dl = state_attr(e, 'days_left') -%}
+              {%- if dl is number and dl < 0 and not muted -%}
+                {%- set ns.items = ns.items + [{
+                  'type': 'maintenance',
+                  'device': dname,
+                  'model': model,
+                  'message': 'Maintenance en retard de ' ~ (-dl) ~ ' jours: ' ~ (state_attr(e, 'friendly_name') or e),
+                }] -%}
+              {%- endif -%}
+            {%- endif -%}
+
+          {%- endif -%}
+        {%- endfor -%}
+
+        {{ ns.items }}
+
+  - alias: "Notifier pour chaque alerte"
+    if:
+      - "{{ alerts | length > 0 }}"
+    then:
+      - repeat:
+          for_each: "{{ alerts }}"
+          sequence:
+            - variables:
+                alert_type: "{{ repeat.item.type }}"
+                device_name: "{{ repeat.item.device }}"
+                model: "{{ repeat.item.model }}"
+                title: "Aqua Medic — {{ repeat.item.device }}"
+                message: "{{ repeat.item.message }}"
+                # Tag unique par (appareil, type d'alerte) pour que les
+                # notifications se remplacent au lieu de s'empiler.
+                notif_tag: "aquamedic_{{ repeat.item.device }}_{{ repeat.item.type }}"
+            - alias: "Envoyer à chaque appareil mobile sélectionné"
+              repeat:
+                for_each: "{{ notify_devices }}"
+                sequence:
+                  - variables:
+                      # On utilise `name` (le nom remonté par l'OS au moment
+                      # de l'enregistrement) et NON `name_by_user` : le slug
+                      # du service notify est figé à l'installation et ignore
+                      # les renommages ultérieurs dans HA.
+                      mobile_slug: >-
+                        {{ (device_attr(repeat.item, 'name')
+                            or repeat.item) | slugify }}
+                  - service: "notify.mobile_app_{{ mobile_slug }}"
+                    data:
+                      title: "{{ title }}"
+                      message: "{{ message }}"
+                      data: >-
+                        {{
+                          {
+                            'tag': notif_tag,
+                            'channel': notify_channel
+                          } if notify_channel else {'tag': notif_tag}
+                        }}

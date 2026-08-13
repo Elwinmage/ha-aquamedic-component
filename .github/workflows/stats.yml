@@ -18,15 +18,15 @@ jobs:
           DATA=$(curl -s https://analytics.home-assistant.io/custom_integrations.json)
           # On force la valeur à 0 si elle est nulle ou absente
           REAL_COUNT=$(echo "$DATA" | jq '.aquamedic.total // 0')
-          
+
           if [ "$REAL_COUNT" -eq 0 ]; then
             ESTIMATED_COUNT=8
           else
             ESTIMATED_COUNT=$((REAL_COUNT * 4))
           fi
-          
+
           echo "{\"estimated\": $ESTIMATED_COUNT}" > ./badges/stats.json
-      
+
       - name: Commit and Push
         run: |
           git config --local user.email "action@github.com"

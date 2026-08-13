@@ -156,6 +156,42 @@ Then restart Home Assistant.
 
 ---
 
+<!-- maintenance-section:start -->
+
+## Maintenance
+
+The integration tracks the cleaning and wear tasks of each pump. Every task comes with three entities: a **button** to record that the job is done, a **slider** to adjust the interval, and a **switch** to mute its alerts. Nothing is sent to the cloud — the state is stored locally, per config entry.
+
+The DC Runner return pump and the DC Skimmer share the same firmware and the same Gizwits product key, so the API cannot tell them apart. Declare it once with the **Pump role** select: the task list follows (the integration reloads itself to apply it). As long as the role is *Not set*, a DC Runner carries no maintenance task. EcoDrift / SmartDrift pumps never ask.
+
+| Pump | Task | Default | Range |
+|---|---|---|---|
+| EcoDrift / SmartDrift | Clean impeller and filter basket | 2 | 1–3 |
+| EcoDrift / SmartDrift | Descale pump | 6 | 3–9 |
+| EcoDrift / SmartDrift | Replace impeller and bearings | 18 | 12–24 |
+| DC Runner (return) | Clean suction strainer | 6 w | 3–9 w |
+| DC Runner (return) | Clean impeller and pump chamber | 4 | 2–6 |
+| DC Runner (return) | Replace impeller and bearings | 18 | 12–24 |
+| DC Runner (skimmer) | Clean collection cup | 2 w | 1–4 w |
+| DC Runner (skimmer) | Clean venturi and air line | 4 w | 2–8 w |
+| DC Runner (skimmer) | Clean needle wheel | 2 | 1–4 |
+| DC Runner (skimmer) | Descale skimmer body | 6 | 3–12 |
+| DC Runner (skimmer) | Replace needle wheel and bearings | 18 | 12–24 |
+
+> Values in months unless followed by `w` (weeks). Aqua Medic publishes no numeric interval, so these defaults come from reef keeping practice — every one of them is adjustable per pump.
+
+### Notifications
+
+The integration never notifies by itself, on purpose. The **Aqua Medic watch** blueprint shipped with the repository does it, and also covers hardware faults and offline pumps. Click the button below and confirm the import in Home Assistant:
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FElwinmage%2Fha-aquamedic-component%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Faquamedic_alerts.en.yaml)
+
+A French version is available as [`aquamedic_alerts.fr.yaml`](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/blueprints/automation/aquamedic_alerts.fr.yaml).
+
+Tasks are also picked up by the maintenance view of [ha-reef-card](https://github.com/Elwinmage/ha-reef-card), next to the Red Sea ones: both integrations publish the same `reef_role` entity contract.
+
+<!-- maintenance-section:end -->
+
 ## Configuration
 
 Go to **Settings → Devices & Services → Add Integration → Aqua Medic**.

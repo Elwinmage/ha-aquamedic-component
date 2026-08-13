@@ -42,9 +42,7 @@ def step(msg):
 GIZWITS_APP_KEY = "b45f1f4f31f546378fcfaed7775c4d12"
 # iOS app id — legacy Open API fallback only.
 GIZWITS_LEGACY_APP_ID = "07452c4f036a4be3acedf8dbeef38320"
-GIZWITS_USER_AGENT = (
-    "gizwitssuperapprn/154300000 CFNetwork/3826.500.131 Darwin/24.5.0"
-)
+GIZWITS_USER_AGENT = "gizwitssuperapprn/154300000 CFNetwork/3826.500.131 Darwin/24.5.0"
 
 # ── Gizwits regional servers ─────────────────────────────────────────────────
 # Mirrors GIZWITS_REGION_ENDPOINTS in const.py (both AEP and legacy Open API).
@@ -126,6 +124,7 @@ def build_sim_urls(base: str) -> dict:
 
 
 # ── AEP helpers ──────────────────────────────────────────────────────────────
+
 
 def aep_headers(jwt: str | None = None) -> dict:
     """Build headers for AEP requests (with optional JWT for authenticated calls)."""
@@ -385,6 +384,7 @@ def aep_get_datapoints(session, jwt, product_key, urls):
 
 # ── Legacy Open API helpers (fallback for non-migrated accounts) ─────────────
 
+
 def legacy_headers(token=None):
     """Build headers for legacy Open API requests."""
     h = {
@@ -480,6 +480,7 @@ def legacy_get_datapoints(session, token, product_key, urls):
 
 # ── Auto-detect: AEP first per region, then legacy per region ────────────────
 
+
 def auto_detect_server(session, username, password, lang="fr"):
     """Try AEP on every region first, then legacy on every region.
 
@@ -553,6 +554,7 @@ def auto_detect_server(session, username, password, lang="fr"):
 
 
 # ── Display helpers ──────────────────────────────────────────────────────────
+
 
 def save_datapoints(device, schema, output_dir):
     """Save the raw datapoint schema to a JSON file in output_dir."""
@@ -716,6 +718,7 @@ def get_gizwits_devices(session, token, urls, api_mode, save_dir=None):
 
 
 # ── Single-region explicit modes ─────────────────────────────────────────────
+
 
 def login_single_region(session, region, username, password, lang="fr"):
     """Try AEP then legacy on a single explicit region.
@@ -885,7 +888,9 @@ if __name__ == "__main__":
         urls, api_mode, token = login_single_region(
             session, server, args.username, password, lang=args.lang
         )
-        if urls is None:
+        # login_single_region returns (None, None, None) on failure: narrow
+        # api_mode too, it is used right below.
+        if urls is None or api_mode is None:
             err("Login failed on both AEP and legacy for this region.")
             sys.exit(1)
         print(f"{GREEN}Using {api_mode.upper()} API on {srv['label']}.{RESET}\n")
