@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import ClassVar
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -23,7 +24,8 @@ from .const import (
     SMARTDRIFT_PRODUCT_KEY,
 )
 from .coordinator import AquaMedicCoordinator
-from .entity import AquaMedicEntity
+from .entity import AquaMedicEntity, AquaMedicMaintenanceEntity
+from .maintenance import MaintenanceTask, get_store, tasks_for_device
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -166,6 +168,10 @@ async def async_setup_entry(
             continue
         for desc in descs:
             entities.append(AquaMedicNumberEntity(coordinator, did, desc))
+        # One interval slider per applicable maintenance task.
+        role = get_store(coordinator).get_role(did)
+        for task in tasks_for_device(dev.product_key, role):
+            entities.append(AquaMedicMaintenanceIntervalNumber(coordinator, did, task))
     async_add_entities(entities)
 
 
@@ -206,3 +212,69 @@ class AquaMedicNumberEntity(AquaMedicEntity, NumberEntity):  # type: ignore[misc
             self._did, {self._desc.attr: int(value)}
         )
         await self.coordinator.async_request_refresh()
+
+
+class AquaMedicMaintenanceIntervalNumber(AquaMedicMaintenanceEntity, NumberEntity):  # type: ignore[misc]
+    """Slider exposing the interval of one maintenance task.
+
+    A thin facade over the persistent MaintenanceStore: `native_value` reads
+    `store.get_interval(...)` and `async_set_native_value` writes it back. The
+    matching button reads the same value when computing `days_left`.
+
+    Storage is always in days; only this entity converts to and from the
+    task's display unit. The unit is carried by the translation_key (and
+    therefore by `reef_role`, e.g. "maint_skimmer_cup_clean_interval_weeks"),
+    which is how ha-reef-card knows what the slider value means without an
+    extra attribute.
+    """
+
+    _attr_icon = "mdi:calendar-range"
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_mode = NumberMode.SLIDER
+    _attr_native_step = 1.0
+    # Intervals are inherently integer; hide the trailing ".0" in the UI.
+    _attr_suggested_display_precision = 0
+
+    # Days-per-unit conversion factors. "days" must be listed explicitly,
+    # otherwise a task declared in days silently falls back to the weekly
+    # factor and is stored as weeks.
+    _DAYS_PER_UNIT: ClassVar[dict[str, int]] = {"days": 1, "weeks": 7, "months": 30}
+
+    def __init__(
+        self,
+        coordinator: AquaMedicCoordinator,
+        did: str,
+        task: MaintenanceTask,
+    ) -> None:
+        unit = task.unit
+        super().__init__(
+            coordinator,
+            did,
+            task,
+            f"maint_{task.key}_interval",
+            f"{task.translation_key}_interval_{unit}",
+        )
+        factor = self._DAYS_PER_UNIT.get(unit, 7)
+        self._unit_factor = factor
+        # No native_unit_of_measurement: the unit is part of the entity name
+        # via the translation_key, so the same slider works for days, weeks
+        # and months without asking HA to localise a custom unit string.
+        self._attr_native_min_value = float(task.min_days // factor)
+        self._attr_native_max_value = float(task.max_days // factor)
+
+    @property
+    def available(self) -> bool:  # type: ignore[override]
+        return True
+
+    @property
+    def native_value(self) -> float | None:  # type: ignore[reportIncompatibleVariableOverride]
+        """Return the stored interval (days) converted to the display unit."""
+        days = self._store.get_interval(
+            self._did, self._task.key, self._task.default_days
+        )
+        return float(days // self._unit_factor)
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Persist the slider value as days (converted from the display unit)."""
+        days = round(value) * self._unit_factor
+        await self._store.async_set_interval(self._did, self._task.key, days)

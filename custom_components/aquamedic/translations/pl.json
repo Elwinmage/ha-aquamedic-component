@@ -14,6 +14,39 @@
     "button": {
       "refresh": {
         "name": "Refresh"
+      },
+      "maint_drift_rotor_clean": {
+        "name": "Wyczyść wirnik i kosz filtra"
+      },
+      "maint_drift_descale": {
+        "name": "Odkamień pompę"
+      },
+      "maint_drift_impeller_replace": {
+        "name": "Wymień wirnik i łożyska"
+      },
+      "maint_runner_strainer_clean": {
+        "name": "Wyczyść kosz ssawny"
+      },
+      "maint_runner_impeller_clean": {
+        "name": "Wyczyść wirnik i komorę pompy"
+      },
+      "maint_runner_impeller_replace": {
+        "name": "Wymień wirnik i łożyska"
+      },
+      "maint_skimmer_cup_clean": {
+        "name": "Wyczyść kubek odpieniacza"
+      },
+      "maint_skimmer_venturi_clean": {
+        "name": "Wyczyść venturi i wężyk powietrza"
+      },
+      "maint_skimmer_needle_wheel_clean": {
+        "name": "Wyczyść wirnik igiełkowy"
+      },
+      "maint_skimmer_body_descale": {
+        "name": "Odkamień korpus odpieniacza"
+      },
+      "maint_skimmer_needle_wheel_replace": {
+        "name": "Wymień wirnik igiełkowy i łożyska"
       }
     },
     "switch": {
@@ -31,6 +64,39 @@
       },
       "control_0_10v": {
         "name": "0-10V control mode"
+      },
+      "maint_drift_rotor_clean_notify": {
+        "name": "Wyczyść wirnik i kosz filtra (powiadomienia)"
+      },
+      "maint_drift_descale_notify": {
+        "name": "Odkamień pompę (powiadomienia)"
+      },
+      "maint_drift_impeller_replace_notify": {
+        "name": "Wymień wirnik i łożyska (powiadomienia)"
+      },
+      "maint_runner_strainer_clean_notify": {
+        "name": "Wyczyść kosz ssawny (powiadomienia)"
+      },
+      "maint_runner_impeller_clean_notify": {
+        "name": "Wyczyść wirnik i komorę pompy (powiadomienia)"
+      },
+      "maint_runner_impeller_replace_notify": {
+        "name": "Wymień wirnik i łożyska (powiadomienia)"
+      },
+      "maint_skimmer_cup_clean_notify": {
+        "name": "Wyczyść kubek odpieniacza (powiadomienia)"
+      },
+      "maint_skimmer_venturi_clean_notify": {
+        "name": "Wyczyść venturi i wężyk powietrza (powiadomienia)"
+      },
+      "maint_skimmer_needle_wheel_clean_notify": {
+        "name": "Wyczyść wirnik igiełkowy (powiadomienia)"
+      },
+      "maint_skimmer_body_descale_notify": {
+        "name": "Odkamień korpus odpieniacza (powiadomienia)"
+      },
+      "maint_skimmer_needle_wheel_replace_notify": {
+        "name": "Wymień wirnik igiełkowy i łożyska (powiadomienia)"
       }
     },
     "select": {
@@ -58,6 +124,14 @@
           "auto": "Automatyczny",
           "feeding": "Karmienie"
         }
+      },
+      "pump_role": {
+        "name": "Rola pompy",
+        "state": {
+          "unknown": "Nieokreślona",
+          "return": "Pompa obiegowa",
+          "skimmer": "Pompa odpieniacza"
+        }
       }
     },
     "number": {
@@ -78,6 +152,39 @@
       },
       "auto_feed_time": {
         "name": "Czas karmienia harmonogramu"
+      },
+      "maint_drift_rotor_clean_interval_months": {
+        "name": "Wyczyść wirnik i kosz filtra (miesiące)"
+      },
+      "maint_drift_descale_interval_months": {
+        "name": "Odkamień pompę (miesiące)"
+      },
+      "maint_drift_impeller_replace_interval_months": {
+        "name": "Wymień wirnik i łożyska (miesiące)"
+      },
+      "maint_runner_strainer_clean_interval_weeks": {
+        "name": "Wyczyść kosz ssawny (tygodnie)"
+      },
+      "maint_runner_impeller_clean_interval_months": {
+        "name": "Wyczyść wirnik i komorę pompy (miesiące)"
+      },
+      "maint_runner_impeller_replace_interval_months": {
+        "name": "Wymień wirnik i łożyska (miesiące)"
+      },
+      "maint_skimmer_cup_clean_interval_weeks": {
+        "name": "Wyczyść kubek odpieniacza (tygodnie)"
+      },
+      "maint_skimmer_venturi_clean_interval_weeks": {
+        "name": "Wyczyść venturi i wężyk powietrza (tygodnie)"
+      },
+      "maint_skimmer_needle_wheel_clean_interval_months": {
+        "name": "Wyczyść wirnik igiełkowy (miesiące)"
+      },
+      "maint_skimmer_body_descale_interval_months": {
+        "name": "Odkamień korpus odpieniacza (miesiące)"
+      },
+      "maint_skimmer_needle_wheel_replace_interval_months": {
+        "name": "Wymień wirnik igiełkowy i łożyska (miesiące)"
       }
     },
     "binary_sensor": {

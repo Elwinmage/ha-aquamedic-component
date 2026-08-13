@@ -167,6 +167,42 @@ Em seguida, reinicie o Home Assistant.
 
 ---
 
+<!-- maintenance-section:start -->
+
+## Manutenção
+
+A integração acompanha as tarefas de limpeza e desgaste de cada bomba. Cada tarefa tem três entidades: um **botão** para registar que está feita, um **cursor** para ajustar o intervalo e um **interruptor** para silenciar os seus alertas. Nada é enviado para a nuvem — o estado é guardado localmente, por entrada de configuração.
+
+A bomba de retorno DC Runner e a bomba do escumador partilham o mesmo firmware e a mesma product key Gizwits, por isso a API não as distingue. Declare-o uma vez no seletor **Função da bomba**: a lista de tarefas acompanha (a integração recarrega para o aplicar). Enquanto a função for *Não definido*, uma DC Runner não tem qualquer tarefa. As EcoDrift / SmartDrift nunca perguntam.
+
+| Bomba | Tarefa | Predefinição | Intervalo |
+|---|---|---|---|
+| EcoDrift / SmartDrift | Limpar o rotor e o cesto de filtragem | 2 | 1–3 |
+| EcoDrift / SmartDrift | Descalcificar a bomba | 6 | 3–9 |
+| EcoDrift / SmartDrift | Substituir o rotor e os rolamentos | 18 | 12–24 |
+| DC Runner (retorno) | Limpar o cesto de aspiração | 6 w | 3–9 w |
+| DC Runner (retorno) | Limpar o rotor e a câmara da bomba | 4 | 2–6 |
+| DC Runner (retorno) | Substituir o rotor e os rolamentos | 18 | 12–24 |
+| DC Runner (escumador) | Limpar o copo coletor | 2 w | 1–4 w |
+| DC Runner (escumador) | Limpar o venturi e o tubo de ar | 4 w | 2–8 w |
+| DC Runner (escumador) | Limpar o rotor de agulhas | 2 | 1–4 |
+| DC Runner (escumador) | Descalcificar o corpo do escumador | 6 | 3–12 |
+| DC Runner (escumador) | Substituir o rotor de agulhas e os rolamentos | 18 | 12–24 |
+
+> Valores em meses, exceto se seguidos de `w` (semanas). A Aqua Medic não publica qualquer intervalo numérico: estes valores vêm da prática em aquário de recife e são ajustáveis bomba a bomba.
+
+### Notificações
+
+A integração nunca notifica sozinha, de propósito. Isso é feito pelo blueprint **Aqua Medic watch** incluído no repositório, que cobre também as falhas de hardware e as bombas offline. Clique no botão abaixo e confirme a importação no Home Assistant:
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FElwinmage%2Fha-aquamedic-component%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Faquamedic_alerts.en.yaml)
+
+Está disponível uma versão francesa: [`aquamedic_alerts.fr.yaml`](https://github.com/Elwinmage/ha-aquamedic-component/blob/main/blueprints/automation/aquamedic_alerts.fr.yaml).
+
+As tarefas aparecem também na vista de manutenção do [ha-reef-card](https://github.com/Elwinmage/ha-reef-card), ao lado das do Red Sea: ambas as integrações publicam o mesmo contrato de entidades `reef_role`.
+
+<!-- maintenance-section:end -->
+
 ## Configuração
 
 Ir a **Definições → Dispositivos e serviços → Adicionar integração → Aqua Medic**.

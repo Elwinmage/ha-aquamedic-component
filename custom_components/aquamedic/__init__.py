@@ -26,6 +26,7 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import AquaMedicCoordinator
+from .maintenance import MaintenanceStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -100,7 +101,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         client.device_list_api or "auto",
     )
 
-    coordinator = AquaMedicCoordinator(hass, client, scan_interval=interval)
+    coordinator = AquaMedicCoordinator(
+        hass, client, scan_interval=interval, entry_id=entry.entry_id
+    )
+
+    # Maintenance state must be loaded before the platforms are forwarded:
+    # the task list of a DC Runner depends on the pump role stored here.
+    maintenance = MaintenanceStore(hass, entry.entry_id)
+    await maintenance.async_load()
+    coordinator.maintenance = maintenance
+
     await coordinator.async_config_entry_first_refresh()
 
     if coordinator.data:

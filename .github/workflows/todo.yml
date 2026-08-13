@@ -1,5 +1,5 @@
 name: "Run TODO to Issue"
-on: 
+on:
   push:
     branches:
       - main

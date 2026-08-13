@@ -24,7 +24,8 @@ from .const import (
     SMARTDRIFT_PRODUCT_KEY,
 )
 from .coordinator import AquaMedicCoordinator
-from .entity import AquaMedicEntity, resolve_model
+from .entity import AquaMedicEntity, AquaMedicMaintenanceEntity, resolve_model
+from .maintenance import MaintenanceTask, get_store, tasks_for_device
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -170,6 +171,10 @@ async def async_setup_entry(
                 entities.append(AquaMedicLocalSwitchEntity(coordinator, did, desc))
             else:
                 entities.append(AquaMedicSwitchEntity(coordinator, did, desc))
+        # One notification opt-out per applicable maintenance task.
+        role = get_store(coordinator).get_role(did)
+        for task in tasks_for_device(dev.product_key, role):
+            entities.append(AquaMedicMaintenanceNotifySwitch(coordinator, did, task))
     async_add_entities(entities)
 
 
@@ -293,3 +298,68 @@ class AquaMedicLocalSwitchEntity(  # type: ignore[misc, reportIncompatibleVariab
     async def async_turn_off(self, **kwargs: Any) -> None:
         self.coordinator.set_control_0_10v(self._did, False)
         self.async_write_ha_state()
+
+
+# ── Maintenance notification switch ───────────────────────────────────────────
+
+
+class AquaMedicMaintenanceNotifySwitch(AquaMedicMaintenanceEntity, SwitchEntity):  # type: ignore[misc]
+    """Switch enabling/disabling overdue alerts for one maintenance task.
+
+    The value lives in the persistent MaintenanceStore next to `last_reset`
+    and `interval_days`, and is mirrored as the `notify` attribute of the
+    matching button, so the alert blueprint never has to correlate two
+    entities.
+
+    `reef_role` is "maint_<task>_notify", which tells it apart from the action
+    button ("maint_<task>") and the interval number
+    ("maint_<task>_interval_<unit>").
+    """
+
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: AquaMedicCoordinator,
+        did: str,
+        task: MaintenanceTask,
+    ) -> None:
+        super().__init__(
+            coordinator,
+            did,
+            task,
+            f"maint_{task.key}_notify",
+            f"{task.translation_key}_notify",
+        )
+        # State is mirrored into `_attr_is_on` / `_attr_icon` rather than
+        # exposed through overridden properties: SwitchEntity declares both as
+        # cached_property, so a plain property override fails pyright and
+        # would cache a value that must change.
+        self._attr_is_on = True
+        self._attr_icon = "mdi:bell-ring"
+
+    @property
+    def available(self) -> bool:  # type: ignore[override]
+        return True
+
+    def _refresh_state(self) -> None:
+        """Pull the current value from the store into the entity attributes."""
+        enabled = self._store.get_notify(self._did, self._task.key)
+        self._attr_is_on = enabled
+        self._attr_icon = "mdi:bell-ring" if enabled else "mdi:bell-off"
+
+    def _on_store_change(self) -> None:
+        self._refresh_state()
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        # Read the persisted value before Home Assistant writes the first
+        # state, otherwise a muted task briefly shows up as enabled.
+        self._refresh_state()
+        await super().async_added_to_hass()
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._store.async_set_notify(self._did, self._task.key, True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._store.async_set_notify(self._did, self._task.key, False)

@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DC_SKIMMER_PRODUCT_KEY, DOMAIN, SMARTDRIFT_PRODUCT_KEY
 from .coordinator import AquaMedicCoordinator
-from .entity import AquaMedicEntity
+from .entity import AquaMedicEntity, ReefRoleMixin
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,8 +105,14 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class AquaMedicFaultEntity(AquaMedicEntity, BinarySensorEntity):  # type: ignore[misc]
-    """Binary sensor that is ON when a fault is active."""
+class AquaMedicFaultEntity(ReefRoleMixin, AquaMedicEntity, BinarySensorEntity):  # type: ignore[misc]
+    """Binary sensor that is ON when a fault is active.
+
+    ReefRoleMixin exposes the translation_key as the `reef_role` attribute
+    (e.g. "fault_lockedrotor"), which is how the alert blueprint targets the
+    fault sensors without depending on the install language or on entity_id
+    suffixes.
+    """
 
     def __init__(
         self,

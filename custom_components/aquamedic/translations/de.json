@@ -76,6 +76,39 @@
     "button": {
       "refresh": {
         "name": "Aktualisieren"
+      },
+      "maint_drift_rotor_clean": {
+        "name": "Rotor und Filterkorb reinigen"
+      },
+      "maint_drift_descale": {
+        "name": "Pumpe entkalken"
+      },
+      "maint_drift_impeller_replace": {
+        "name": "Rotor und Lager ersetzen"
+      },
+      "maint_runner_strainer_clean": {
+        "name": "Ansaugkorb reinigen"
+      },
+      "maint_runner_impeller_clean": {
+        "name": "Rotor und Pumpenkammer reinigen"
+      },
+      "maint_runner_impeller_replace": {
+        "name": "Rotor und Lager ersetzen"
+      },
+      "maint_skimmer_cup_clean": {
+        "name": "Schaumtopf reinigen"
+      },
+      "maint_skimmer_venturi_clean": {
+        "name": "Venturi und Luftschlauch reinigen"
+      },
+      "maint_skimmer_needle_wheel_clean": {
+        "name": "Nadelrad reinigen"
+      },
+      "maint_skimmer_body_descale": {
+        "name": "Abschäumerkörper entkalken"
+      },
+      "maint_skimmer_needle_wheel_replace": {
+        "name": "Nadelrad und Lager ersetzen"
       }
     },
     "switch": {
@@ -93,6 +126,39 @@
       },
       "control_0_10v": {
         "name": "0–10-V-Steuerung"
+      },
+      "maint_drift_rotor_clean_notify": {
+        "name": "Rotor und Filterkorb reinigen (Benachrichtigungen)"
+      },
+      "maint_drift_descale_notify": {
+        "name": "Pumpe entkalken (Benachrichtigungen)"
+      },
+      "maint_drift_impeller_replace_notify": {
+        "name": "Rotor und Lager ersetzen (Benachrichtigungen)"
+      },
+      "maint_runner_strainer_clean_notify": {
+        "name": "Ansaugkorb reinigen (Benachrichtigungen)"
+      },
+      "maint_runner_impeller_clean_notify": {
+        "name": "Rotor und Pumpenkammer reinigen (Benachrichtigungen)"
+      },
+      "maint_runner_impeller_replace_notify": {
+        "name": "Rotor und Lager ersetzen (Benachrichtigungen)"
+      },
+      "maint_skimmer_cup_clean_notify": {
+        "name": "Schaumtopf reinigen (Benachrichtigungen)"
+      },
+      "maint_skimmer_venturi_clean_notify": {
+        "name": "Venturi und Luftschlauch reinigen (Benachrichtigungen)"
+      },
+      "maint_skimmer_needle_wheel_clean_notify": {
+        "name": "Nadelrad reinigen (Benachrichtigungen)"
+      },
+      "maint_skimmer_body_descale_notify": {
+        "name": "Abschäumerkörper entkalken (Benachrichtigungen)"
+      },
+      "maint_skimmer_needle_wheel_replace_notify": {
+        "name": "Nadelrad und Lager ersetzen (Benachrichtigungen)"
       }
     },
     "select": {
@@ -120,6 +186,14 @@
           "auto": "Automatik",
           "feeding": "Fütterung"
         }
+      },
+      "pump_role": {
+        "name": "Pumpenrolle",
+        "state": {
+          "unknown": "Nicht festgelegt",
+          "return": "Rückförderpumpe",
+          "skimmer": "Abschäumerpumpe"
+        }
       }
     },
     "number": {
@@ -140,6 +214,39 @@
       },
       "auto_feed_time": {
         "name": "Timer-Fütterungsdauer"
+      },
+      "maint_drift_rotor_clean_interval_months": {
+        "name": "Rotor und Filterkorb reinigen (Monate)"
+      },
+      "maint_drift_descale_interval_months": {
+        "name": "Pumpe entkalken (Monate)"
+      },
+      "maint_drift_impeller_replace_interval_months": {
+        "name": "Rotor und Lager ersetzen (Monate)"
+      },
+      "maint_runner_strainer_clean_interval_weeks": {
+        "name": "Ansaugkorb reinigen (Wochen)"
+      },
+      "maint_runner_impeller_clean_interval_months": {
+        "name": "Rotor und Pumpenkammer reinigen (Monate)"
+      },
+      "maint_runner_impeller_replace_interval_months": {
+        "name": "Rotor und Lager ersetzen (Monate)"
+      },
+      "maint_skimmer_cup_clean_interval_weeks": {
+        "name": "Schaumtopf reinigen (Wochen)"
+      },
+      "maint_skimmer_venturi_clean_interval_weeks": {
+        "name": "Venturi und Luftschlauch reinigen (Wochen)"
+      },
+      "maint_skimmer_needle_wheel_clean_interval_months": {
+        "name": "Nadelrad reinigen (Monate)"
+      },
+      "maint_skimmer_body_descale_interval_months": {
+        "name": "Abschäumerkörper entkalken (Monate)"
+      },
+      "maint_skimmer_needle_wheel_replace_interval_months": {
+        "name": "Nadelrad und Lager ersetzen (Monate)"
       }
     },
     "binary_sensor": {
