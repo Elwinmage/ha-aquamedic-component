@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.aquamedic.number import (
-    AquaMedicNumberEntity,
-    AquaMedicNumberDescription,
-    NUMBER_DESCRIPTIONS,
-)
 from custom_components.aquamedic.coordinator import AquaMedicDeviceData
-from tests.conftest import MOCK_DID, MOCK_DEVICE_ONLINE, MOCK_DEVICE_OFFLINE, MOCK_LATEST
+from custom_components.aquamedic.number import (
+    NUMBER_DESCRIPTIONS,
+    AquaMedicNumberDescription,
+    AquaMedicNumberEntity,
+)
+from tests.conftest import (
+    MOCK_DEVICE_OFFLINE,
+    MOCK_DEVICE_ONLINE,
+    MOCK_DID,
+    MOCK_LATEST,
+)
 
 
 def _get_desc(key: str) -> AquaMedicNumberDescription:
@@ -37,6 +42,7 @@ def num_feed(coordinator):
 
 # ── Descriptions ──────────────────────────────────────────────────────────────
 
+
 def test_flow_description():
     d = _get_desc("flow")
     assert d.native_min_value == 0
@@ -57,6 +63,7 @@ def test_feed_time_description():
 
 # ── Values ────────────────────────────────────────────────────────────────────
 
+
 def test_flow_native_value(num_flow):
     assert num_flow.native_value == 75.0
 
@@ -71,12 +78,15 @@ def test_feed_time_native_value(num_feed):
 
 def test_native_value_none_when_missing(coordinator):
     attrs = {k: v for k, v in MOCK_LATEST["attr"].items() if k != "Flow"}
-    coordinator.data = {MOCK_DID: AquaMedicDeviceData(MOCK_DEVICE_ONLINE, {"attr": attrs})}
+    coordinator.data = {
+        MOCK_DID: AquaMedicDeviceData(MOCK_DEVICE_ONLINE, {"attr": attrs})
+    }
     num = AquaMedicNumberEntity(coordinator, MOCK_DID, _get_desc("flow"))
     assert num.native_value is None
 
 
 # ── Availability ──────────────────────────────────────────────────────────────
+
 
 def test_flow_available_online(num_flow, coordinator):
     assert num_flow.available is True
@@ -104,6 +114,7 @@ def test_frequency_available_even_with_0_10v(coordinator, num_freq):
 
 
 # ── Control ───────────────────────────────────────────────────────────────────
+
 
 async def test_set_flow(num_flow, mock_client):
     await num_flow.async_set_native_value(80.0)

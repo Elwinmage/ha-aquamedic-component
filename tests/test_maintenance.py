@@ -32,7 +32,6 @@ from custom_components.aquamedic.maintenance import (
 )
 from tests.conftest import MOCK_DID
 
-
 # ── Catalogue ─────────────────────────────────────────────────────────────────
 
 

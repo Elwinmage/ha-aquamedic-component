@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from custom_components.aquamedic.button import AquaMedicMaintenanceButton
-from custom_components.aquamedic.coordinator import AquaMedicDeviceData
 from custom_components.aquamedic.const import DC_SKIMMER_PRODUCT_KEY
+from custom_components.aquamedic.coordinator import AquaMedicDeviceData
 from custom_components.aquamedic.maintenance import (
     PUMP_ROLE_RETURN,
     PUMP_ROLE_SKIMMER,

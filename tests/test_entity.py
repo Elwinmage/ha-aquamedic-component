@@ -4,15 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.aquamedic.entity import AquaMedicEntity, ReefRoleMixin
 from custom_components.aquamedic.const import DOMAIN, SMARTDRIFT_PRODUCT_KEY
-from tests.conftest import MOCK_DID, MOCK_ATTRS
+from custom_components.aquamedic.entity import AquaMedicEntity, ReefRoleMixin
+from tests.conftest import MOCK_DID
 
 
 class _ConcreteEntity(AquaMedicEntity):
     """Minimal concrete entity for testing."""
-
-    pass
 
 
 @pytest.fixture

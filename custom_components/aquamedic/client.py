@@ -13,9 +13,9 @@ import aiohttp
 from .const import (
     AEP_PATH_BINDINGS,
     AEP_PATH_CONTROL,
+    AEP_PATH_DATAPOINT,
     AEP_PATH_DEVDATA,
     AEP_PATH_LOGIN_PWD,
-    AEP_PATH_DATAPOINT,
     AEP_PATH_REFRESH_TOKEN,
     AEP_PATH_USER_DEVICES,
     DEVICE_LIST_BINDINGS,
@@ -422,7 +422,7 @@ class AquaMedicClient:
                     "phone_model": "Home Assistant",
                 },
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _LOGGER.warning("Provisioning failed (non-fatal): %s", exc)
 
     async def _authenticate_legacy(self) -> None:

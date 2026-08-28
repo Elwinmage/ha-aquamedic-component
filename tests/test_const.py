@@ -5,8 +5,8 @@ from custom_components.aquamedic.const import (
     CONF_REGION,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
-    DEFAULT_SCAN_INTERVAL,
     DEFAULT_REGION,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     GIZWITS_API_URLS,
     GIZWITS_APP_ID,
@@ -49,9 +49,9 @@ def test_smartdrift_product_key():
 
 
 def test_conf_keys():
-    assert CONF_USERNAME      == "username"
-    assert CONF_PASSWORD      == "password"
-    assert CONF_REGION        == "region"
+    assert CONF_USERNAME == "username"
+    assert CONF_PASSWORD == "password"
+    assert CONF_REGION == "region"
     assert CONF_SCAN_INTERVAL == "scan_interval"
 
 
@@ -63,6 +63,7 @@ def test_scan_interval_bounds():
 
 def test_update_interval():
     from datetime import timedelta
+
     assert UPDATE_INTERVAL == timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
 

@@ -17,12 +17,11 @@ from custom_components.aquamedic.client import (
     AquaMedicConnectionError,
 )
 from custom_components.aquamedic.const import (
-    GIZWITS_APP_KEY,
-    GIZWITS_LEGACY_APP_ID,
     DEVICE_LIST_BINDINGS,
     DEVICE_LIST_SMART_HOME,
+    GIZWITS_APP_KEY,
+    GIZWITS_LEGACY_APP_ID,
 )
-
 from tests.conftest import MOCK_DID, MOCK_PASSWORD, MOCK_TOKEN, MOCK_USERNAME
 
 MOCK_AEP_LOGIN = {
@@ -69,6 +68,7 @@ def legacy_client(client):
 
 # ── Headers ───────────────────────────────────────────────────────────────────
 
+
 def test_aep_headers(client):
     client._jwt = MOCK_TOKEN
     h = client._aep_headers()
@@ -97,6 +97,7 @@ def test_gateway_headers(client):
 
 # ── Provision (legacy) ────────────────────────────────────────────────────────
 
+
 async def test_provision_success(legacy_client, session):
     session.request = MagicMock(return_value=_make_response(200, {}))
     await legacy_client.provision()
@@ -108,6 +109,7 @@ async def test_provision_failure_nonfatal(legacy_client, session):
 
 
 # ── Authenticate ──────────────────────────────────────────────────────────────
+
 
 async def test_authenticate_aep_success(client, session):
     session.request = MagicMock(return_value=_make_response(200, MOCK_AEP_LOGIN))
@@ -212,6 +214,7 @@ async def test_aep_request_retries_after_refresh(client, session):
 
 # ── get_devices ───────────────────────────────────────────────────────────────
 
+
 async def test_get_devices_aep(client, session):
     client._api_mode = API_MODE_AEP
     client._jwt = MOCK_TOKEN
@@ -269,7 +272,11 @@ async def test_detect_device_list_bindings_when_smart_home_404(client, session):
         if "/app/bindings" in url:
             return _make_response(
                 200,
-                {"devices": [{"did": MOCK_DID, "product_key": "pk", "is_online": True}]},
+                {
+                    "devices": [
+                        {"did": MOCK_DID, "product_key": "pk", "is_online": True}
+                    ]
+                },
             )
         raise AssertionError(f"unexpected url {url}")
 
@@ -287,9 +294,7 @@ async def test_switch_to_legacy_blocked_when_migrated(client):
 
 async def test_get_devices_legacy(legacy_client, session):
     devices = [{"did": MOCK_DID, "is_online": True}]
-    session.request = MagicMock(
-        return_value=_make_response(200, {"devices": devices})
-    )
+    session.request = MagicMock(return_value=_make_response(200, {"devices": devices}))
     result = await legacy_client.get_devices()
     assert result[0]["did"] == MOCK_DID
     assert result[0]["is_online"] is True
@@ -302,6 +307,7 @@ async def test_get_devices_http_error(legacy_client, session):
 
 
 # ── get_device_data ───────────────────────────────────────────────────────────
+
 
 async def test_get_device_data_aep(client, session):
     client._api_mode = API_MODE_AEP
@@ -325,7 +331,9 @@ async def test_get_device_data_smart_home_prefers_aep_devdata(client, session):
         if "devdata" in url and "euaepapp" in url:
             return _make_response(200, payload)
         if "devices-manager" in url:
-            raise AssertionError("smart_home WIFI must not call gateway before AEP devdata")
+            raise AssertionError(
+                "smart_home WIFI must not call gateway before AEP devdata"
+            )
         return _make_response(200, {})
 
     session.request = MagicMock(side_effect=_side_effect)
@@ -382,7 +390,9 @@ async def test_get_device_data_smart_home_gateway_fallback_open_api(client, sess
                 {"attr": {"Flow": 42}, "is_online": True, "updated_at": 1},
             )
         if "devices-manager" in url:
-            raise AssertionError("gateway should not run when Open API devdata succeeds")
+            raise AssertionError(
+                "gateway should not run when Open API devdata succeeds"
+            )
         return _make_response(200, {})
 
     session.request = MagicMock(side_effect=_side_effect)
@@ -423,6 +433,7 @@ async def test_get_device_data_empty_devdata(client, session):
 #            with JWT in X-Gizwits-User-token (not Authorization).
 # Gateway /v2/devices-controller returns 405 for all methods.
 # AEP host /app/control returns 404.
+
 
 async def test_control_device_aep_smart_home_uses_open_api(client, session):
     """smart_home: POST to Legacy Open API host with JWT as X-Gizwits-User-token."""
@@ -479,13 +490,12 @@ async def test_control_device_error(legacy_client, session):
 
 # ── Normalization ─────────────────────────────────────────────────────────────
 
+
 def test_resolve_is_online():
     assert AquaMedicClient.resolve_is_online({"is_online": True}, {}) is True
     assert AquaMedicClient.resolve_is_online({}, {"is_online": False}) is False
     assert AquaMedicClient.resolve_is_online({}, {}) is None
-    assert (
-        AquaMedicClient.resolve_is_online({}, {"attr": {"Flow": 50}}) is True
-    )
+    assert AquaMedicClient.resolve_is_online({}, {"attr": {"Flow": 50}}) is True
     assert AquaMedicClient.resolve_is_online({}, {"attr": {}}) is None
 
 
@@ -538,6 +548,7 @@ def test_normalize_devdata_nested():
 
 # ── get_datapoints ────────────────────────────────────────────────────────────
 
+
 async def test_get_datapoints_aep_open_api_fallback(client, session):
     """AEP datapoint 404 → regional Open API host (euapi.gizwits.com)."""
     client._api_mode = API_MODE_AEP
@@ -578,9 +589,11 @@ async def test_get_invalid_json(legacy_client, session):
 
 # ── _aep_code_int error path ──────────────────────────────────────────────────
 
+
 def test_aep_code_int_non_castable_string():
     """L47-48: non-integer string → None (TypeError/ValueError path)."""
     from custom_components.aquamedic.client import _aep_code_int
+
     assert _aep_code_int("abc") is None
     assert _aep_code_int("") is None
     assert _aep_code_int(None) is None
@@ -588,28 +601,32 @@ def test_aep_code_int_non_castable_string():
 
 # ── Client properties ─────────────────────────────────────────────────────────
 
+
 def test_client_token_properties(client):
     """L147, 157, 162: access_token, token_expired_at, token_created_at properties."""
-    client._jwt              = "jwt-token"
+    client._jwt = "jwt-token"
     client._token_expired_at = 1700086400
     client._token_created_at = 1700000000
-    assert client.access_token     == "jwt-token"
+    assert client.access_token == "jwt-token"
     assert client.token_expired_at == 1700086400
     assert client.token_created_at == 1700000000
 
 
 # ── _request_json ssl kwarg ───────────────────────────────────────────────────
 
+
 async def test_request_json_explicit_ssl_kwarg(client, session):
     """L249: explicit ssl kwarg forwarded to session.request."""
     session.request = MagicMock(return_value=_make_response(200, {}))
-    await client._request_json("GET", "https://example.com/test",
-                                headers=client._aep_headers(), ssl=True)
+    await client._request_json(
+        "GET", "https://example.com/test", headers=client._aep_headers(), ssl=True
+    )
     call_kwargs = session.request.call_args[1]
     assert call_kwargs.get("ssl") is True
 
 
 # ── _parse_aep_envelope error branches ───────────────────────────────────────
+
 
 def test_parse_aep_envelope_connection_error_for_non_auth_code(client):
     """L277: non-auth AEP error code → AquaMedicConnectionError."""
@@ -619,6 +636,7 @@ def test_parse_aep_envelope_connection_error_for_non_auth_code(client):
 
 
 # ── ensure_valid_token ────────────────────────────────────────────────────────
+
 
 async def test_ensure_valid_token_skips_when_not_aep(client):
     """L292: legacy mode → immediate return, no refresh attempted."""
@@ -636,8 +654,8 @@ async def test_ensure_valid_token_skips_when_no_jwt(client):
 
 async def test_ensure_valid_token_skips_when_no_timestamps(client):
     """L298: no token_expired_at → return before time check."""
-    client._api_mode         = API_MODE_AEP
-    client._jwt              = MOCK_TOKEN
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
     client._token_expired_at = None
     client._token_created_at = None
     await client.ensure_valid_token()
@@ -646,33 +664,33 @@ async def test_ensure_valid_token_skips_when_no_timestamps(client):
 async def test_ensure_valid_token_skips_when_token_still_fresh(client):
     """L302: now < mid-lifetime threshold → no refresh triggered."""
     now = int(time.time())
-    client._api_mode         = API_MODE_AEP
-    client._jwt              = MOCK_TOKEN
-    client._token_created_at = now - 100       # just started
-    client._token_expired_at = now + 86300     # lifetime=86400, mid=43200 → fresh
-    client._refresh_token    = "rt"
-    await client.ensure_valid_token()           # no session call expected
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._token_created_at = now - 100  # just started
+    client._token_expired_at = now + 86300  # lifetime=86400, mid=43200 → fresh
+    client._refresh_token = "rt"
+    await client.ensure_valid_token()  # no session call expected
 
 
 async def test_ensure_valid_token_skips_when_no_refresh_token(client):
     """L304-305: past mid-lifetime but no refresh_token → return."""
     now = int(time.time())
-    client._api_mode         = API_MODE_AEP
-    client._jwt              = MOCK_TOKEN
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
     client._token_created_at = now - 50000
-    client._token_expired_at = now + 100       # past mid-lifetime
-    client._refresh_token    = None
-    await client.ensure_valid_token()           # no refresh, no raise
+    client._token_expired_at = now + 100  # past mid-lifetime
+    client._refresh_token = None
+    await client.ensure_valid_token()  # no refresh, no raise
 
 
 async def test_ensure_valid_token_triggers_refresh(client, session):
     """L306-307: past mid-lifetime + refresh_token → _refresh_aep_token called."""
     now = int(time.time())
-    client._api_mode         = API_MODE_AEP
-    client._jwt              = MOCK_TOKEN
-    client._refresh_token    = "rt-old"
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = "rt-old"
     client._token_created_at = now - 50000
-    client._token_expired_at = now + 100       # past mid-lifetime
+    client._token_expired_at = now + 100  # past mid-lifetime
     refresh_body = {
         "code": 200,
         "data": {"token": "jwt-refreshed", "refresh_token": "rt-new"},
@@ -683,6 +701,7 @@ async def test_ensure_valid_token_triggers_refresh(client, session):
 
 
 # ── _update_aep_tokens edge cases ────────────────────────────────────────────
+
 
 async def test_update_aep_tokens_defaults_created_at_to_now(client, session):
     """L322: createdAt absent from response → defaults to int(time.time())."""
@@ -719,6 +738,7 @@ async def test_update_aep_tokens_defaults_expired_at_to_plus_one_day(client, ses
 
 # ── _control_headers_aep ─────────────────────────────────────────────────────
 
+
 def test_control_headers_aep_contains_jwt_as_user_token(client):
     """New method: JWT placed in X-Gizwits-User-token, not Authorization."""
     client._jwt = MOCK_TOKEN
@@ -729,6 +749,7 @@ def test_control_headers_aep_contains_jwt_as_user_token(client):
 
 
 # ── _fetch_devdata_open_api ───────────────────────────────────────────────────
+
 
 async def test_fetch_devdata_open_api_success(client, session):
     """L633-634: Open API fallback GET returns attrs."""
@@ -750,8 +771,10 @@ async def test_fetch_devdata_open_api_error_code_raises(client, session):
 
 # ── _fetch_device_data_with_fallbacks ────────────────────────────────────────
 
+
 async def test_fetch_device_data_all_fetchers_fail(client):
     """L681-682: all fetchers fail → AquaMedicConnectionError with combined msg."""
+
     async def _fail1(did):
         raise AquaMedicConnectionError("err1")
 
@@ -767,6 +790,7 @@ async def test_fetch_device_data_all_fetchers_fail(client):
 
 
 # ── _normalize_bindings paths ─────────────────────────────────────────────────
+
 
 def test_normalize_bindings_data_devices_path(client):
     """L819-821: data.devices format (AEP envelope variant)."""
@@ -792,6 +816,7 @@ def test_normalize_bindings_top_level_devices_not_list(client):
 
 # ── resolve_is_online additional branches ────────────────────────────────────
 
+
 def test_normalize_device_record_isOnline_fallback():
     """L790: isOnline key used when is_online absent from device record."""
     raw = {"did": "x", "productKey": "pk", "name": "Pump", "isOnline": True}
@@ -813,6 +838,7 @@ def test_resolve_is_online_none_when_attr_empty():
 
 # ── _normalize_gateway_query branches ────────────────────────────────────────
 
+
 def test_normalize_gateway_query_isOnline_key():
     """L790: isOnline (camelCase) key used when is_online absent."""
     raw = {"data": {"data": {"attrs": {"Flow": 5}, "isOnline": False}}}
@@ -828,6 +854,7 @@ def test_normalize_gateway_query_flat_attrs():
 
 
 # ── _should_fallback_to_legacy ────────────────────────────────────────────────
+
 
 def test_should_fallback_to_legacy_returns_false_for_404():
     exc = AquaMedicAuthError("HTTP 404 from server: {}")
@@ -846,13 +873,14 @@ def test_should_fallback_to_legacy_returns_false_for_other_error():
 
 # ── authenticate with stored valid JWT ───────────────────────────────────────
 
+
 async def test_authenticate_restores_valid_stored_jwt(client, session):
     """L764-765: valid JWT + refresh_token → probe session, skip re-login."""
     now = int(time.time())
-    client._jwt              = MOCK_TOKEN
-    client._refresh_token    = "rt"
-    client._token_expired_at = now + 3600   # still valid
-    client._device_list_api  = DEVICE_LIST_SMART_HOME
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = "rt"
+    client._token_expired_at = now + 3600  # still valid
+    client._device_list_api = DEVICE_LIST_SMART_HOME
     # _probe_aep_session will call _fetch_user_devices_aep → GET request
     devices_body = {"code": 200, "data": {"devices": [{"did": MOCK_DID}]}}
     session.request = MagicMock(return_value=_make_response(200, devices_body))
@@ -862,23 +890,24 @@ async def test_authenticate_restores_valid_stored_jwt(client, session):
 
 # ── get_devices fallback to legacy ───────────────────────────────────────────
 
+
 async def test_get_devices_aep_falls_back_to_legacy_on_505(client, session):
     """L914: AEP auth error with legacy-fallback code (505 ∈ _AEP_AUTH_CODES) → switch."""
     # code 505 is in _AEP_AUTH_CODES → raises AquaMedicAuthError
     # "505" also matches _should_fallback_to_legacy → True
     # No refresh_token → no refresh attempt, raises directly
     aep_error = _make_response(200, {"code": "505", "message": "user not migrated"})
-    provision    = _make_response(200, {})
+    provision = _make_response(200, {})
     legacy_login = _make_response(200, {"token": "legacy-tok"})
-    bindings     = _make_response(
+    bindings = _make_response(
         200, {"devices": [{"did": MOCK_DID, "product_key": "pk"}]}
     )
     session.request = MagicMock(
         side_effect=[aep_error, provision, legacy_login, bindings]
     )
-    client._api_mode        = API_MODE_AEP
-    client._jwt             = MOCK_TOKEN
-    client._refresh_token   = None   # no refresh → code-error raises directly
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = None  # no refresh → code-error raises directly
     client._device_list_api = DEVICE_LIST_BINDINGS
     result = await client.get_devices()
     assert len(result) >= 1
@@ -886,16 +915,19 @@ async def test_get_devices_aep_falls_back_to_legacy_on_505(client, session):
 
 # ── get_device_data public method ────────────────────────────────────────────
 
+
 async def test_get_device_data_aep_path(client, session):
     """L926-930: AEP get_device_data → _get_device_data_aep."""
-    client._api_mode        = API_MODE_AEP
-    client._jwt             = MOCK_TOKEN
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
     client._device_list_api = DEVICE_LIST_SMART_HOME
     # AEP devdata → 404 (not on AEP host)
     aep_404 = _make_response(404, {})
     # Open API fallback → success
     oa_body = {"attr": {"Flow": 55}, "is_online": True}
     gw_404 = _make_response(500, {"code": "404", "message": "Page Not Found"})
-    session.request = MagicMock(side_effect=[aep_404, gw_404, _make_response(200, oa_body)])
+    session.request = MagicMock(
+        side_effect=[aep_404, gw_404, _make_response(200, oa_body)]
+    )
     result = await client.get_device_data(MOCK_DID)
     assert result.get("attr", {}).get("Flow") == 55

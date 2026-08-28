@@ -240,7 +240,7 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors["base"] = "invalid_auth"
         except AquaMedicConnectionError:
             errors["base"] = "cannot_connect"
-        except Exception:  # noqa: BLE001
+        except Exception:
             _LOGGER.exception("Unexpected error during Aqua Medic setup")
             errors["base"] = "unknown"
 
@@ -322,7 +322,7 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # _reauth_entry is guaranteed non-None — async_step_reauth aborts before
         # calling this method when the entry is not found.
         entry = self._reauth_entry
-        assert entry is not None  # noqa: S101
+        assert entry is not None
         current_username = entry.data.get(CONF_USERNAME, "")
 
         if user_input is not None:
@@ -347,7 +347,7 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_auth"
             except AquaMedicConnectionError:
                 errors["base"] = "cannot_connect"
-            except Exception:  # noqa: BLE001
+            except Exception:
                 _LOGGER.exception("Unexpected error during re-authentication")
                 errors["base"] = "unknown"
 
@@ -434,7 +434,7 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_auth"
             except AquaMedicConnectionError:
                 errors["base"] = "cannot_connect"
-            except Exception:  # noqa: BLE001
+            except Exception:
                 _LOGGER.exception("Unexpected error during reconfiguration")
                 errors["base"] = "unknown"
 

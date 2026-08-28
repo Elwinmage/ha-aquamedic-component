@@ -6,15 +6,14 @@ the entity-level unit tests which bypass the setup machinery).
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from homeassistant.config_entries import ConfigEntry
 
-from custom_components.aquamedic.const import DOMAIN, SMARTDRIFT_PRODUCT_KEY
+from custom_components.aquamedic.const import DOMAIN
 from custom_components.aquamedic.coordinator import AquaMedicDeviceData
-from tests.conftest import MOCK_DID, MOCK_DEVICE_ONLINE, MOCK_LATEST
-
+from tests.conftest import MOCK_DEVICE_ONLINE, MOCK_DID, MOCK_LATEST
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
 

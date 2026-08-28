@@ -800,7 +800,10 @@ def detect_default_interface() -> str:
 def ensure_virtual_ip(ip: str, interface: str) -> None:
     """Add a virtual IP alias on *interface* if not already present."""
     result = subprocess.run(
-        ["ip", "addr", "show", "dev", interface], capture_output=True, text=True
+        ["ip", "addr", "show", "dev", interface],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if f"inet {ip}" in result.stdout:
         log.info("Virtual IP %s already present on %s", ip, interface)
@@ -813,7 +816,9 @@ def ensure_virtual_ip(ip: str, interface: str) -> None:
 def remove_virtual_ip(ip: str, interface: str) -> None:
     """Remove the virtual IP alias from *interface*."""
     subprocess.run(
-        ["ip", "addr", "del", f"{ip}/24", "dev", interface], capture_output=True
+        ["ip", "addr", "del", f"{ip}/24", "dev", interface],
+        capture_output=True,
+        check=False,
     )
     log.info("Virtual IP %s removed from %s", ip, interface)
 

@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
+from homeassistant.const import EntityCategory
 
 from custom_components.aquamedic.button import (
-    AquaMedicRefreshButton,
     REFRESH_DESCRIPTION,
+    AquaMedicRefreshButton,
 )
-from homeassistant.const import EntityCategory
 from tests.conftest import MOCK_DID
 
 
@@ -39,6 +39,7 @@ def test_button_available_independent_of_device_online(button, coordinator):
     """Button available is not tied to device online status."""
     from custom_components.aquamedic.coordinator import AquaMedicDeviceData
     from tests.conftest import MOCK_DEVICE_OFFLINE, MOCK_LATEST
+
     coordinator.data = {MOCK_DID: AquaMedicDeviceData(MOCK_DEVICE_OFFLINE, MOCK_LATEST)}
     assert button.available is True
 
