@@ -19,6 +19,24 @@ Controlla le tue pompe Aqua Medic da Home Assistant tramite l'API cloud Gizwits.
 
 ---
 
+<!-- ecosystem:start -->
+
+## Progetti correlati
+
+I progetti ReefTech si incastrano tra loro: le integrazioni portano la tua attrezzatura in Home Assistant, la scheda la mostra e la pilota, e il backup la mantiene in funzione durante un blackout. Ognuno funziona anche da solo.
+
+| | Progetto | Ruolo | Funziona con |
+| --- | --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-reefbeat-component/main/icon.png" width="100" alt="ha-reefbeat-component" /> | [**ha-reefbeat-component**](https://github.com/Elwinmage/ha-reefbeat-component) | Dispositivi Red Sea ReefBeat, pilotati in locale senza cloud: ReefATO+, ReefControl, ReefControl-Power, ReefDose, ReefLed, ReefMat, ReefRun e ReefWave.<br />Include **ReefBeat watch**, un blueprint di allerta per manutenzioni scadute, modalità anomale, batteria scarica e dispositivi irraggiungibili. [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/Elwinmage/ha-reefbeat-component/refs/heads/main/blueprints/automation/redsea_alerts.en.yaml) | ha-reef-card |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/icon.png" width="100" alt="ha-aquamedic-component" /> | **ha-aquamedic-component**<br />*(questo repository)* | Pompe Aqua Medic tramite l'API cloud Gizwits: pompe di movimento EcoDrift e SmartDrift, pompe DC Runner di risalita e dello schiumatoio. | ha-reef-card |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-maintenance-component/main/icon.png" width="100" alt="ha-reef-maintenance-component" /> | [**ha-reef-maintenance-component**](https://github.com/Elwinmage/ha-reef-maintenance-component) | Tracciamento di pulizia e usura per l'attrezzatura che Home Assistant non può interrogare: pompe di movimento, pompe di risalita, schiumatoi, reattori, tutto ciò che curi a mano. | ha-reef-card |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-card/main/icon.png" width="100" alt="ha-reef-card" /> | [**ha-reef-card**](https://github.com/Elwinmage/ha-reef-card) | Vista grafica interattiva di ogni dispositivo sulla tua dashboard, e unico modo per modificare le programmazioni avanzate. Legge le tre integrazioni tramite il contratto `reef_role` comune, senza configurazione lato scheda. | tutte e tre le integrazioni |
+| <img src="https://raw.githubusercontent.com/Elwinmage/reefbeatEnergyBackup/main/icon.png" width="100" alt="reefbeatEnergyBackup" /> | [**reefbeatEnergyBackup**](https://github.com/Elwinmage/reefbeatEnergyBackup) | Backup a batteria in caso di blackout. Un pacco 24V LiFePO₄ gestito da un Raspberry Pi, con degrado progressivo della velocità delle pompe in base allo stato di carica. | da solo, o insieme a ha-reefbeat-component |
+
+Sono tutti documentati insieme sulla [pagina del progetto ReefTech](https://elwinmage.github.io/reeftank/).
+
+<!-- ecosystem:end -->
+
 ## Dispositivi supportati
 
 Il tuo dispositivo non è supportato? Contattami.

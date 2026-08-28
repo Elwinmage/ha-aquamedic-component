@@ -19,6 +19,24 @@ Controle suas bombas Aqua Medic a partir do Home Assistant através da API cloud
 
 ---
 
+<!-- ecosystem:start -->
+
+## Projetos relacionados
+
+Os projetos ReefTech encaixam-se entre si: as integrações trazem o seu equipamento para o Home Assistant, o cartão mostra-o e comanda-o, e o backup mantém-no a funcionar durante um corte. Cada um funciona também sozinho.
+
+| | Projeto | Função | Funciona com |
+| --- | --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-reefbeat-component/main/icon.png" width="100" alt="ha-reefbeat-component" /> | [**ha-reefbeat-component**](https://github.com/Elwinmage/ha-reefbeat-component) | Aparelhos Red Sea ReefBeat, comandados localmente sem cloud: ReefATO+, ReefControl, ReefControl-Power, ReefDose, ReefLed, ReefMat, ReefRun e ReefWave.<br />Inclui **ReefBeat watch**, um blueprint de alertas para manutenções em atraso, modos anómalos, bateria fraca e aparelhos inacessíveis. [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/Elwinmage/ha-reefbeat-component/refs/heads/main/blueprints/automation/redsea_alerts.en.yaml) | ha-reef-card |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/icon.png" width="100" alt="ha-aquamedic-component" /> | **ha-aquamedic-component**<br />*(este repositório)* | Bombas Aqua Medic através da API cloud Gizwits: bombas de circulação EcoDrift e SmartDrift, bombas DC Runner de retorno e do escumador. | ha-reef-card |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-maintenance-component/main/icon.png" width="100" alt="ha-reef-maintenance-component" /> | [**ha-reef-maintenance-component**](https://github.com/Elwinmage/ha-reef-maintenance-component) | Acompanhamento da limpeza e do desgaste do equipamento que o Home Assistant não consegue interrogar: bombas de circulação, bombas de retorno, escumadores, reatores, tudo o que trata à mão. | ha-reef-card |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-card/main/icon.png" width="100" alt="ha-reef-card" /> | [**ha-reef-card**](https://github.com/Elwinmage/ha-reef-card) | Vista gráfica interativa de cada aparelho no seu painel, e a única forma de editar os programas avançados. Lê as três integrações através do contrato `reef_role` comum, sem configuração do lado do cartão. | as três integrações |
+| <img src="https://raw.githubusercontent.com/Elwinmage/reefbeatEnergyBackup/main/icon.png" width="100" alt="reefbeatEnergyBackup" /> | [**reefbeatEnergyBackup**](https://github.com/Elwinmage/reefbeatEnergyBackup) | Backup por bateria em caso de corte. Um pack 24V LiFePO₄ comandado por um Raspberry Pi, com degradação progressiva da velocidade das bombas conforme o estado de carga. | sozinho, ou a par do ha-reefbeat-component |
+
+Estão todos documentados em conjunto na [página do projeto ReefTech](https://elwinmage.github.io/reeftank/).
+
+<!-- ecosystem:end -->
+
 ## Dispositivos suportados
 
 O seu dispositivo não é suportado? Entre em contato comigo.

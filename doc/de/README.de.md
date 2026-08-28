@@ -19,6 +19,24 @@ Steuern Sie Ihre Aqua Medic Pumpen über die Gizwits-Cloud-API mit Home Assistan
 
 ---
 
+<!-- ecosystem:start -->
+
+## Verwandte Projekte
+
+Die ReefTech-Projekte greifen ineinander: die Integrationen bringen Ihre Geräte in Home Assistant, die Karte zeigt und steuert sie, und das Backup hält sie bei einem Stromausfall am Laufen. Jedes funktioniert auch für sich allein.
+
+| | Projekt | Funktion | Arbeitet mit |
+| --- | --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-reefbeat-component/main/icon.png" width="100" alt="ha-reefbeat-component" /> | [**ha-reefbeat-component**](https://github.com/Elwinmage/ha-reefbeat-component) | Red Sea ReefBeat-Geräte, lokal gesteuert ohne Cloud: ReefATO+, ReefControl, ReefControl-Power, ReefDose, ReefLed, ReefMat, ReefRun und ReefWave.<br />Enthält **ReefBeat watch**, ein Alarm-Blueprint für überfällige Wartungen, abweichende Modi, niedrigen Akkustand und nicht erreichbare Geräte. [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/Elwinmage/ha-reefbeat-component/refs/heads/main/blueprints/automation/redsea_alerts.en.yaml) | ha-reef-card |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/icon.png" width="100" alt="ha-aquamedic-component" /> | **ha-aquamedic-component**<br />*(dieses Repository)* | Aqua Medic-Pumpen über die Gizwits-Cloud-API: EcoDrift- und SmartDrift-Strömungspumpen, DC Runner Rückförder- und Abschäumerpumpen. | ha-reef-card |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-maintenance-component/main/icon.png" width="100" alt="ha-reef-maintenance-component" /> | [**ha-reef-maintenance-component**](https://github.com/Elwinmage/ha-reef-maintenance-component) | Reinigungs- und Verschleißverfolgung für Geräte, die Home Assistant nicht erreicht: Strömungspumpen, Rückförderpumpen, Abschäumer, Reaktoren, alles was von Hand gewartet wird. | ha-reef-card |
+| <img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-card/main/icon.png" width="100" alt="ha-reef-card" /> | [**ha-reef-card**](https://github.com/Elwinmage/ha-reef-card) | Interaktive grafische Ansicht jedes Geräts auf Ihrem Dashboard und der einzige Weg, erweiterte Zeitpläne zu bearbeiten. Liest die drei Integrationen über den gemeinsamen `reef_role`-Vertrag, ohne Konfiguration auf Kartenseite. | alle drei Integrationen |
+| <img src="https://raw.githubusercontent.com/Elwinmage/reefbeatEnergyBackup/main/icon.png" width="100" alt="reefbeatEnergyBackup" /> | [**reefbeatEnergyBackup**](https://github.com/Elwinmage/reefbeatEnergyBackup) | Batterie-Backup bei Stromausfall. Ein 24V LiFePO₄-Pack, gesteuert von einem Raspberry Pi, mit schrittweiser Reduzierung der Pumpendrehzahl je nach Ladezustand. | eigenständig oder zusammen mit ha-reefbeat-component |
+
+Alle zusammen sind auf der [ReefTech-Projektseite](https://elwinmage.github.io/reeftank/) dokumentiert.
+
+<!-- ecosystem:end -->
+
 ## Unterstützte Geräte
 
 Ihr Gerät wird nicht unterstützt? Kontaktieren Sie mich.
