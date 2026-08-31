@@ -14,7 +14,6 @@ from .const import DC_RUNNER_PRODUCT_KEY, DC_RUNNER_SERIES_PRODUCT_KEY, DOMAIN
 from .coordinator import AquaMedicCoordinator, AquaMedicDeviceData
 from .maintenance import MaintenanceStore, MaintenanceTask, get_store
 
-
 # Product keys handled as the "DC Runner" line — return-pump and skimmer
 # variants share the DC Runner series firmware, and the speculative legacy PK
 # is also part of the DC Runner family branding.

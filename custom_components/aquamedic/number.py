@@ -198,9 +198,9 @@ class AquaMedicNumberEntity(AquaMedicEntity, NumberEntity):  # type: ignore[misc
             self.coordinator.last_update_success and dev is not None and dev.is_online
         ):
             return False
-        if self._desc.gated_by_0_10v and self.coordinator.get_control_0_10v(self._did):
-            return False
-        return True
+        return not (
+            self._desc.gated_by_0_10v and self.coordinator.get_control_0_10v(self._did)
+        )
 
     @property
     def native_value(self) -> float | None:  # type: ignore[reportIncompatibleVariableOverride]

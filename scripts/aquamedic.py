@@ -1,10 +1,11 @@
-import requests
 import argparse
-import uuid
-import sys
+import getpass
 import json
 import os
-import getpass
+import sys
+import uuid
+
+import requests
 
 # ── ANSI color helpers ────────────────────────────────────────────────────────
 RESET = "\033[0m"

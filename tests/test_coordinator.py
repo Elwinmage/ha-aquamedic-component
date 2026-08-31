@@ -2,43 +2,42 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.aquamedic.client import AquaMedicClient, AquaMedicConnectionError
+from custom_components.aquamedic.client import AquaMedicConnectionError
+from custom_components.aquamedic.const import SMARTDRIFT_PRODUCT_KEY
 from custom_components.aquamedic.coordinator import (
     AquaMedicCoordinator,
     AquaMedicDeviceData,
 )
-from custom_components.aquamedic.const import SMARTDRIFT_PRODUCT_KEY
-from homeassistant.helpers.update_coordinator import UpdateFailed
-
 from tests.conftest import (
     MOCK_ATTRS,
-    MOCK_DID,
-    MOCK_DEVICE_ONLINE,
     MOCK_DEVICE_OFFLINE,
+    MOCK_DEVICE_ONLINE,
+    MOCK_DID,
     MOCK_LATEST,
 )
 
-
 # ── AquaMedicDeviceData ───────────────────────────────────────────────────────
+
 
 def test_device_data_online(device_data_online):
     d = device_data_online
-    assert d.did         == MOCK_DID
+    assert d.did == MOCK_DID
     assert d.product_key == SMARTDRIFT_PRODUCT_KEY
-    assert d.name        == "SmartDrift Test"
-    assert d.is_online   is True
-    assert d.attrs       == MOCK_ATTRS
-    assert d.updated_at  == 1700000000
+    assert d.name == "SmartDrift Test"
+    assert d.is_online is True
+    assert d.attrs == MOCK_ATTRS
+    assert d.updated_at == 1700000000
 
 
 def test_device_data_offline(device_data_offline):
     d = device_data_offline
     assert d.is_online is False
-    assert d.attrs     == {}
+    assert d.attrs == {}
 
 
 def test_device_data_unknown_online():
@@ -72,15 +71,17 @@ def test_device_data_default_name():
 
 def test_device_data_get():
     d = AquaMedicDeviceData(MOCK_DEVICE_ONLINE, MOCK_LATEST)
-    assert d.get("Flow")       == 75
+    assert d.get("Flow") == 75
     assert d.get("missing", 0) == 0
 
 
 # ── AquaMedicCoordinator ──────────────────────────────────────────────────────
 
+
 def test_coordinator_creation(hass, mock_client):
     coord = AquaMedicCoordinator(hass, mock_client, scan_interval=60)
     from datetime import timedelta
+
     assert coord.update_interval == timedelta(seconds=60)
 
 
@@ -101,7 +102,9 @@ async def test_coordinator_skips_device_without_did(hass, mock_client):
 
 async def test_coordinator_device_fetch_failure(hass, mock_client):
     """Device fetch failure is logged but does not crash the coordinator."""
-    mock_client.get_device_data = AsyncMock(side_effect=AquaMedicConnectionError("fail"))
+    mock_client.get_device_data = AsyncMock(
+        side_effect=AquaMedicConnectionError("fail")
+    )
     coord = AquaMedicCoordinator(hass, mock_client)
     data = await coord._async_update_data()
     assert MOCK_DID in data
@@ -116,6 +119,7 @@ async def test_coordinator_raises_update_failed_on_bindings_error(hass, mock_cli
 
 
 # ── 0-10V local state ─────────────────────────────────────────────────────────
+
 
 def test_control_0_10v_default(coordinator):
     assert coordinator.get_control_0_10v(MOCK_DID) is False

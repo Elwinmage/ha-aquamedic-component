@@ -44,8 +44,8 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from custom_components.aquamedic.client import AquaMedicClient  # noqa: E402
-from custom_components.aquamedic.const import (  # noqa: E402
+from custom_components.aquamedic.client import AquaMedicClient
+from custom_components.aquamedic.const import (
     CONF_ACCESS_TOKEN,
     CONF_API_MODE,
     CONF_DEVICE_LIST_API,
@@ -263,7 +263,7 @@ async def _probe(
         return -1, f"Connection error: {exc}"
     except asyncio.TimeoutError:
         return -2, "Timeout"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return -3, f"Error: {exc}"
 
 
@@ -578,7 +578,7 @@ async def resolve_credentials(
     )
     try:
         await client.authenticate()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _err(f"Authentication failed: {exc}")
         _warn("Tip: use --ha-config /config to load tokens directly from HA storage.")
         return None
@@ -610,7 +610,7 @@ async def async_main(args: argparse.Namespace) -> int:
         creds = await resolve_credentials(args, session)
         if creds is None:
             return 1
-        jwt, legacy_token, region, api_mode, dev_list_api = creds
+        jwt, legacy_token, region, _api_mode, _dev_list_api = creds
 
         if not jwt:
             _warn("JWT is empty — unauthenticated probes will likely return 401/403.")
