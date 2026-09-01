@@ -42,7 +42,19 @@ jobs:
               sha: '${{steps.update_manifest.outputs.tag_sha}}'
             })
 
-      - uses: ncipollo/release-action@v1
+      # 📦 1. Étape pour compresser avec la bonne structure
+      - name: Pack integration ZIP
+        run: |
+          # On se place à la racine pour inclure le dossier custom_components
+          zip -r aquamedic.zip custom_components/reef_maintenance
+
+      # 🚀 2. Publication avec le bon Asset
+      - name: Create Release with Zip Asset
+        uses: ncipollo/release-action@v1
         with:
-          prerelease: "true"
-          tag: ${{ github.event.inputs.tag}}
+          prerelease: true
+          tag: ${{ github.event.inputs.tag }}
+          artifacts: "aquamedic.zip" # 👈 Nom officiel attendu
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
