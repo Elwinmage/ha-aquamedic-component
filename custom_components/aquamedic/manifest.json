@@ -15,5 +15,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Elwinmage/ha-aquamedic-component/issues",
   "requirements": [],
-  "version": "v0.7.1"
+  "version": "v0.7.0"
 }
