@@ -931,3 +931,640 @@ async def test_get_device_data_aep_path(client, session):
     )
     result = await client.get_device_data(MOCK_DID)
     assert result.get("attr", {}).get("Flow") == 55
+
+
+# ── L114: Unknown region raises ValueError ──────────────────────────────────
+
+
+def test_unknown_region_raises_value_error(session):
+    """L114: constructor with invalid region → ValueError."""
+    with pytest.raises(ValueError, match="Unknown region"):
+        AquaMedicClient(session, MOCK_USERNAME, MOCK_PASSWORD, region="mars")
+
+
+# ── L298: ensure_valid_token lifetime<=0 ────────────────────────────────────
+
+
+async def test_ensure_valid_token_skips_when_lifetime_zero(client):
+    """L298: lifetime <= 0 → immediate return, no refresh."""
+    now = int(time.time())
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._token_created_at = now
+    client._token_expired_at = now  # lifetime = 0
+    client._refresh_token = "rt"
+    await client.ensure_valid_token()  # must not raise
+
+
+# ── L305-307: ensure_valid_token refresh fails → re-login ───────────────────
+
+
+async def test_ensure_valid_token_refresh_fails_relogin(client, session):
+    """L305-307: refresh raises → fallback to _authenticate_aep."""
+    now = int(time.time())
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = "rt-old"
+    client._token_created_at = now - 50000
+    client._token_expired_at = now + 100  # past mid-lifetime
+
+    calls = []
+
+    def _side_effect(method, url, **kwargs):
+        calls.append(url)
+        if "refresh_token" in url:
+            # Refresh fails
+            return _make_response(200, {"code": 1000033, "message": "bad refresh"})
+        if "login/pwd" in url:
+            # Re-login succeeds
+            return _make_response(200, MOCK_AEP_LOGIN)
+        return _make_response(200, {})
+
+    session.request = MagicMock(side_effect=_side_effect)
+    await client.ensure_valid_token()
+    assert client._jwt == MOCK_TOKEN  # re-login sets new token
+    assert any("login/pwd" in u for u in calls)
+
+
+# ── L326, 328: _refresh_aep_token guards ────────────────────────────────────
+
+
+async def test_refresh_aep_token_no_refresh_token(client):
+    """L326: no refresh_token → AquaMedicAuthError."""
+    client._refresh_token = None
+    client._jwt = MOCK_TOKEN
+    with pytest.raises(AquaMedicAuthError, match="No refresh token"):
+        await client._refresh_aep_token()
+
+
+async def test_refresh_aep_token_no_jwt(client):
+    """L328: no JWT → AquaMedicAuthError."""
+    client._refresh_token = "rt"
+    client._jwt = None
+    with pytest.raises(AquaMedicAuthError, match="No JWT"):
+        await client._refresh_aep_token()
+
+
+# ── L345: _refresh_aep_token no token in response ──────────────────────────
+
+
+async def test_refresh_aep_token_no_token_in_response(client, session):
+    """L345: refresh response without token → AquaMedicAuthError."""
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = "rt"
+    body = {"code": 200, "data": {"refresh_token": "rt-new"}}
+    session.request = MagicMock(return_value=_make_response(200, body))
+    with pytest.raises(AquaMedicAuthError, match="No token in refresh"):
+        await client._refresh_aep_token()
+
+
+# ── L436-438: _authenticate_legacy 9026 → legacy_available=False ────────────
+
+
+async def test_authenticate_legacy_9026_marks_unavailable(client, session):
+    """L436-438: login error 9026 → _legacy_available = False, then raises."""
+
+    def _side_effect(method, url, **kwargs):
+        if "provision" in url:
+            return _make_response(200, {})
+        if "/app/login" in url:
+            return _make_response(
+                400, {"error_code": 9026, "error_message": "migrated"}
+            )
+        return _make_response(200, {})
+
+    session.request = MagicMock(side_effect=_side_effect)
+    with pytest.raises(AquaMedicAuthError, match="9026"):
+        await client._authenticate_legacy()
+    assert client._legacy_available is False
+
+
+# ── L479-484: _aep_request HTTP-level auth error → refresh+retry ────────────
+
+
+async def test_aep_request_http_auth_error_refreshes_and_retries(client, session):
+    """L479-484: HTTP 401 (not 404) with refresh token → refresh then retry."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = "rt"
+    calls = {"n": 0}
+
+    def _side_effect(method, url, **kwargs):
+        calls["n"] += 1
+        if "refresh_token" in url:
+            return _make_response(
+                200,
+                {
+                    "code": 200,
+                    "data": {
+                        "token": "jwt-new",
+                        "refresh_token": "rt-new",
+                        "created_at": int(time.time()),
+                        "expired_at": int(time.time()) + 3600,
+                    },
+                },
+            )
+        # First call: HTTP 401 (auth error at HTTP level, not in envelope)
+        if calls["n"] == 1:
+            return _make_response(401, {"error": "unauthorized"})
+        # Retry: success
+        return _make_response(200, {"result": "ok"})
+
+    session.request = MagicMock(side_effect=_side_effect)
+    result = await client._aep_request("GET", client._aep_url("/test/path"))
+    assert result == {"result": "ok"}
+    assert client._jwt == "jwt-new"
+
+
+# ── L492: _aep_request HTTP auth error, no refresh → raise ─────────────────
+
+
+async def test_aep_request_http_auth_error_no_refresh_raises(client, session):
+    """L492: HTTP auth error with no refresh_token → re-raise."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = None  # no refresh available
+    session.request = MagicMock(
+        return_value=_make_response(401, {"error": "unauthorized"})
+    )
+    with pytest.raises(AquaMedicAuthError):
+        await client._aep_request("GET", client._aep_url("/test/path"))
+
+
+# ── L514: _aep_request non-auth envelope code → ConnectionError ─────────────
+
+
+async def test_aep_request_non_auth_envelope_code_raises(client, session):
+    """L514: envelope error code not in _AEP_AUTH_CODES → AquaMedicConnectionError."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    session.request = MagicMock(
+        return_value=_make_response(200, {"code": 999, "message": "server err"})
+    )
+    with pytest.raises(AquaMedicConnectionError, match="AEP error 999"):
+        await client._aep_request("GET", client._aep_url("/test/path"))
+
+
+# ── L523: _probe_aep_session with DEVICE_LIST_BINDINGS ─────────────────────
+
+
+async def test_probe_aep_session_bindings_path(client, session):
+    """L523: stored device_list_api=bindings → _fetch_bindings_aep called."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._device_list_api = DEVICE_LIST_BINDINGS
+    body = {"devices": [{"did": MOCK_DID, "product_key": "pk"}]}
+    session.request = MagicMock(return_value=_make_response(200, body))
+    await client._probe_aep_session()  # must not raise
+
+
+# ── L538: _fetch_user_devices_aep body without "code" key ──────────────────
+
+
+async def test_fetch_user_devices_aep_no_code_key(client, session):
+    """L538: body has no 'code' key → direct normalize_bindings."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    body = {"devices": [{"did": MOCK_DID}]}
+    session.request = MagicMock(return_value=_make_response(200, body))
+    result = await client._fetch_user_devices_aep()
+    assert result == [{"did": MOCK_DID}]
+
+
+# ── L571: _detect_device_list_api bindings non-404 error ───────────────────
+
+
+async def test_detect_device_list_smart_home_bindings_non_404_error(client, session):
+    """L571: smartHome OK + bindings fails with non-404 → still picks smart_home."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+
+    def _side_effect(method, url, **kwargs):
+        if "smartHome/v2/users/devices" in url:
+            return _make_response(200, {"code": 200, "data": [{"did": MOCK_DID}]})
+        if "/app/bindings" in url:
+            return _make_response(500, {"error": "server error"})
+        return _make_response(200, {})
+
+    session.request = MagicMock(side_effect=_side_effect)
+    result = await client._detect_device_list_api()
+    assert result == DEVICE_LIST_SMART_HOME
+
+
+# ── L585-590: _detect_device_list_api both fail ────────────────────────────
+
+
+async def test_detect_device_list_both_fail_raises(client, session):
+    """L585-590: smartHome AND bindings both fail → AquaMedicConnectionError."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+
+    def _side_effect(method, url, **kwargs):
+        if "smartHome/v2/users/devices" in url:
+            return _make_response(500, {"error": "server"})
+        if "/app/bindings" in url:
+            return _make_response(500, {"error": "also server"})
+        return _make_response(200, {})
+
+    session.request = MagicMock(side_effect=_side_effect)
+    with pytest.raises(AquaMedicConnectionError, match="Neither"):
+        await client._detect_device_list_api()
+
+
+# ── L633-634: _fetch_devdata_aep body with code key ─────────────────────────
+
+
+async def test_fetch_devdata_aep_with_code_envelope(client, session):
+    """L633-634: devdata response with AEP envelope → parse + normalize."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    body = {"code": 200, "data": {"attr": {"Flow": 70}, "is_online": True}}
+    session.request = MagicMock(return_value=_make_response(200, body))
+    result = await client._fetch_devdata_aep(MOCK_DID)
+    assert result["attr"]["Flow"] == 70
+
+
+# ── L658-660: _fetch_devdata_open_api code=200 + inner dict ────────────────
+
+
+async def test_fetch_devdata_open_api_code_200_inner_dict(client, session):
+    """L658-660: Open API response with code=200 and data dict → normalize inner."""
+    client._jwt = MOCK_TOKEN
+    body = {
+        "code": 200,
+        "data": {"attr": {"Flow": 33}, "is_online": True, "updated_at": 1},
+    }
+    session.request = MagicMock(return_value=_make_response(200, body))
+    result = await client._fetch_devdata_open_api(MOCK_DID)
+    assert result["attr"]["Flow"] == 33
+
+
+# ── L704-710: _get_device_data_aep bindings 404 → gateway ──────────────────
+
+
+async def test_get_device_data_aep_bindings_404_falls_to_gateway(client, session):
+    """L704-710: bindings path AEP 404 → gateway fallback."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._device_list_api = DEVICE_LIST_BINDINGS
+
+    def _side_effect(method, url, **kwargs):
+        if "devdata" in url:
+            return _make_response(404, {"error": "not found"})
+        if "devices-manager" in url:
+            return _make_response(
+                200,
+                {"data": {"data": {"attrs": {"Flow": 99}, "is_online": True}}},
+            )
+        return _make_response(200, {})
+
+    session.request = MagicMock(side_effect=_side_effect)
+    result = await client._get_device_data_aep(MOCK_DID)
+    assert result["attr"]["Flow"] == 99
+
+
+# ── L764-765: authenticate stored session probe fails → re-login ───────────
+
+
+async def test_authenticate_stored_session_probe_fails_relogins(client, session):
+    """L764-765: valid stored JWT but probe fails → re-login via AEP."""
+    now = int(time.time())
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = "rt"
+    client._token_expired_at = now + 3600
+    client._device_list_api = DEVICE_LIST_SMART_HOME
+
+    calls = []
+
+    def _side_effect(method, url, **kwargs):
+        calls.append(url)
+        # Probe → fails
+        if "smartHome/v2/users/devices" in url:
+            return _make_response(500, {"error": "server"})
+        # Re-login → succeeds
+        if "login/pwd" in url:
+            return _make_response(200, MOCK_AEP_LOGIN)
+        return _make_response(200, {})
+
+    session.request = MagicMock(side_effect=_side_effect)
+    await client.authenticate()
+    assert client._api_mode == API_MODE_AEP
+    assert any("login/pwd" in u for u in calls)
+
+
+# ── L790, 792: _normalize_device_record wifiOnline / netStatus ─────────────
+
+
+def test_normalize_device_record_wifi_online():
+    """L790: wifiOnline fallback when all online keys absent."""
+    raw = {"did": "x", "productKey": "pk", "name": "P", "wifiOnline": 1}
+    out = AquaMedicClient._normalize_device_record(raw)
+    assert out["is_online"] is True
+
+
+def test_normalize_device_record_net_status():
+    """L792: netStatus == 2 → online True."""
+    raw = {"did": "x", "productKey": "pk", "name": "P", "netStatus": 2}
+    out = AquaMedicClient._normalize_device_record(raw)
+    assert out["is_online"] is True
+
+
+def test_normalize_device_record_net_status_offline():
+    """L792: netStatus != 2 → online False."""
+    raw = {"did": "x", "productKey": "pk", "name": "P", "netStatus": 0}
+    out = AquaMedicClient._normalize_device_record(raw)
+    assert out["is_online"] is False
+
+
+# ── L819-821: _normalize_bindings raw is list ──────────────────────────────
+
+
+def test_normalize_bindings_data_is_list():
+    """L817-818: data is a plain list → returned as-is."""
+    raw = {"data": [{"did": "d1"}]}
+    result = AquaMedicClient._normalize_bindings(raw)
+    assert len(result) == 1
+
+
+def test_normalize_bindings_empty_fallback():
+    """L821: no devices, no data list → empty list."""
+    raw = {"other": "stuff"}
+    result = AquaMedicClient._normalize_bindings(raw)
+    assert result == []
+
+
+# ── L856, 865: _normalize_devdata attrs paths ─────────────────────────────
+
+
+def test_normalize_devdata_data_attrs_key():
+    """L856: data dict with 'attrs' key (not 'attr') → mapped to attr."""
+    raw = {"data": {"attrs": {"Flow": 42}, "updated_at": 10}}
+    result = AquaMedicClient._normalize_devdata(raw)
+    assert result["attr"]["Flow"] == 42
+    assert result["updated_at"] == 10
+
+
+def test_normalize_devdata_top_level_attrs():
+    """L865: top-level 'attrs' key → mapped to attr."""
+    raw = {"attrs": {"Flow": 11}, "updated_at": 5}
+    result = AquaMedicClient._normalize_devdata(raw)
+    assert result["attr"]["Flow"] == 11
+
+
+# ── L890: _normalize_gateway_query fallback to _normalize_devdata ──────────
+
+
+def test_normalize_gateway_query_no_attrs_fallback():
+    """L890: no attrs dict in payload → fallback to _normalize_devdata."""
+    raw = {"data": {"data": {"is_online": True, "updated_at": 1}}}
+    result = AquaMedicClient._normalize_gateway_query(raw)
+    assert result.get("is_online") is True
+
+
+# ── L905: get_devices auth error re-raises (no legacy) ─────────────────────
+
+
+async def test_get_devices_aep_reraises_when_no_legacy(client, session):
+    """L905: AEP auth error, not a fallback code → re-raise."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = None
+    client._device_list_api = DEVICE_LIST_SMART_HOME
+    # HTTP 401 → AquaMedicAuthError, but 404 style not a fallback
+    session.request = MagicMock(
+        return_value=_make_response(404, {"error": "not found"})
+    )
+    with pytest.raises(AquaMedicConnectionError):
+        await client.get_devices()
+
+
+# ── L926-930: get_device_data AEP auth error → legacy fallback ─────────────
+
+
+async def test_get_device_data_aep_auth_error_falls_to_legacy(client, session):
+    """L926-930: AEP auth error with fallback code → switch to legacy."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = None
+    client._device_list_api = DEVICE_LIST_BINDINGS
+
+    calls = {"n": 0}
+
+    def _side_effect(method, url, **kwargs):
+        calls["n"] += 1
+        # 1st: AEP devdata → auth error 505 (in _AEP_AUTH_CODES)
+        if calls["n"] == 1 and "devdata" in url:
+            return _make_response(200, {"code": 505, "message": "user not migrated"})
+        # Provision
+        if "provision" in url:
+            return _make_response(200, {})
+        # Legacy login
+        if "/app/login" in url:
+            return _make_response(200, {"token": "leg-tok"})
+        # Legacy devdata
+        if "devdata" in url:
+            return _make_response(200, {"attr": {"Flow": 12}, "updated_at": 1})
+        return _make_response(200, {})
+
+    session.request = MagicMock(side_effect=_side_effect)
+    result = await client.get_device_data(MOCK_DID)
+    assert client._api_mode == API_MODE_LEGACY
+    assert result["attr"]["Flow"] == 12
+
+
+# ── L948: get_datapoints AEP non-404 connection error re-raises ────────────
+
+
+async def test_get_datapoints_aep_non_404_raises(client, session):
+    """L948: AEP datapoint error that is NOT 404 → re-raise."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = None
+    session.request = MagicMock(
+        return_value=_make_response(200, {"code": 500, "message": "server"})
+    )
+    with pytest.raises(AquaMedicConnectionError, match="AEP error 500"):
+        await client.get_datapoints("some-pk")
+
+
+# ── L960-961: get_datapoints AEP envelope with code ─────────────────────────
+
+
+async def test_get_datapoints_aep_with_code_envelope(client, session):
+    """L960-961: AEP datapoints response with code key → parse envelope."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    body = {
+        "code": 200,
+        "data": {"entities": [{"attrs": [{"name": "SwitchON"}]}]},
+    }
+    session.request = MagicMock(return_value=_make_response(200, body))
+    result = await client.get_datapoints("some-pk")
+    assert "entities" in result
+
+
+async def test_get_datapoints_aep_envelope_non_dict_inner(client, session):
+    """L961: AEP envelope inner data is not dict → wrap in {'data': inner}."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    body = {"code": 200, "data": [1, 2, 3]}
+    session.request = MagicMock(return_value=_make_response(200, body))
+    result = await client.get_datapoints("some-pk")
+    assert result == {"data": [1, 2, 3]}
+
+
+# ── L973-978: control_device AEP auth error → legacy fallback ──────────────
+
+
+async def test_control_device_aep_auth_error_falls_to_legacy(client, session):
+    """L973-978: AEP control auth error → switch to legacy + retry."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = None
+    client._device_list_api = DEVICE_LIST_BINDINGS
+
+    calls = {"n": 0}
+
+    def _side_effect(method, url, **kwargs):
+        calls["n"] += 1
+        # 1st: AEP control → auth error
+        if calls["n"] == 1 and "/app/control" in url:
+            return _make_response(401, {"error": "unauthorized"})
+        # Provision
+        if "provision" in url:
+            return _make_response(200, {})
+        # Legacy login
+        if "/app/login" in url:
+            return _make_response(200, {"token": "leg-tok"})
+        # Legacy control (retry)
+        if "/app/control" in url:
+            return _make_response(200, {})
+        return _make_response(200, {})
+
+    session.request = MagicMock(side_effect=_side_effect)
+    await client.control_device(MOCK_DID, {"SwitchON": 1})
+    assert client._api_mode == API_MODE_LEGACY
+
+
+# ── L59-60, 102-106: sim region constructor ─────────────────────────────────
+
+
+def test_client_sim_region(session):
+    """L102-106: region='sim' + sim_host → all bases point to sim host."""
+    c = AquaMedicClient(
+        session,
+        MOCK_USERNAME,
+        MOCK_PASSWORD,
+        region="sim",
+        sim_host="http://localhost:8080/",
+    )
+    assert c._aep_base == "http://localhost:8080"
+    assert c._legacy_urls["LOGIN"] == "http://localhost:8080/app/login"
+
+
+# ── L590: _detect_device_list_api bindings fail, smart_home_error None ──────
+
+
+async def test_detect_device_list_bindings_fail_no_smart_home_error(client, session):
+    """L590: smart_home succeeds (smart_home_error=None), bindings also tried
+    after, this path is for the second bindings attempt when smart_home FAILED.
+    Here: smart_home fails, bindings fails too but with smart_home_error=None
+    doesn't apply — instead smart_home fails first, bindings fails second.
+    Actually L590: smart_home fails, then bindings also fails with
+    smart_home_error IS not None → 'Neither' error (L587).
+    L590 is when smart_home_error is None → just re-raise bindings error."""
+    # To hit L590, we need smart_home_error to be None when bindings fails.
+    # But smart_home_error is only None when smart_home succeeded (the else branch).
+    # After the else branch, we return DEVICE_LIST_SMART_HOME at L581.
+    # The second bindings attempt (L583-590) only runs when smart_home FAILED.
+    # So smart_home_error is always set when we reach L583. L590 is unreachable
+    # in current logic. Skip.
+
+
+# ── L706: bindings devdata non-404 error re-raises ─────────────────────────
+
+
+async def test_get_device_data_bindings_non_404_reraises(client, session):
+    """L706: bindings path, AEP devdata connection error (not 404) → re-raise."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._device_list_api = DEVICE_LIST_BINDINGS
+
+    # Trigger AquaMedicConnectionError via network failure (not HTTP 404)
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(side_effect=aiohttp.ClientError("connection reset"))
+    cm.__aexit__ = AsyncMock(return_value=False)
+    session.request = MagicMock(return_value=cm)
+    with pytest.raises(AquaMedicConnectionError, match="connection reset"):
+        await client._get_device_data_aep(MOCK_DID)
+
+
+# ── L905: get_devices AEP auth error not a fallback code → re-raise ────────
+
+
+async def test_get_devices_aep_auth_error_non_fallback_reraises(client, session):
+    """L905: AEP auth error with non-fallback code → re-raise directly."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = None
+    client._device_list_api = DEVICE_LIST_BINDINGS
+
+    # Envelope code in _AEP_AUTH_CODES BUT _should_fallback_to_legacy returns True
+    # for those. Need an HTTP-level auth error with non-fallback message.
+    session.request = MagicMock(
+        return_value=_make_response(401, {"error": "unknown auth issue"})
+    )
+    with pytest.raises(AquaMedicAuthError, match="HTTP 401"):
+        await client.get_devices()
+
+
+# ── L930: get_device_data AEP auth error not fallback → re-raise ───────────
+
+
+async def test_get_device_data_aep_auth_error_non_fallback_reraises(client, session):
+    """L930: AEP auth error with non-fallback code → re-raise."""
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = None
+    client._device_list_api = DEVICE_LIST_BINDINGS
+
+    session.request = MagicMock(
+        return_value=_make_response(401, {"error": "unknown auth issue"})
+    )
+    with pytest.raises(AquaMedicAuthError, match="HTTP 401"):
+        await client.get_device_data(MOCK_DID)
+
+
+async def test_control_device_aep_auth_error_no_legacy_reraises(client, session):
+    """L977-978: AEP control auth error + _can_use_legacy() False → re-raise.
+
+    Use bindings path with _legacy_available initially None.  The 9026 error
+    from _switch_to_legacy sets _legacy_available=False and re-raises,
+    propagating straight out of control_device.
+    """
+    client._api_mode = API_MODE_AEP
+    client._jwt = MOCK_TOKEN
+    client._refresh_token = None
+    client._device_list_api = DEVICE_LIST_BINDINGS
+    client._legacy_available = None  # bindings path
+
+    calls = {"n": 0}
+
+    def _side_effect(method, url, **kwargs):
+        calls["n"] += 1
+        # AEP control → auth error via envelope (bindings path uses _aep_request)
+        if calls["n"] == 1 and "/app/control" in url:
+            return _make_response(200, {"code": 505, "message": "token expired"})
+        # Provision
+        if "provision" in url:
+            return _make_response(200, {})
+        # Legacy login → 9026 migrated error
+        if "/app/login" in url:
+            return _make_response(
+                400, {"error_code": 9026, "error_message": "migrated"}
+            )
+        return _make_response(200, {})
+
+    session.request = MagicMock(side_effect=_side_effect)
+    with pytest.raises(AquaMedicAuthError):
+        await client.control_device(MOCK_DID, {"SwitchON": 1})

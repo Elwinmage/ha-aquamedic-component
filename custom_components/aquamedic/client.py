@@ -587,7 +587,7 @@ class AquaMedicClient:
                 raise AquaMedicConnectionError(
                     "Neither smartHome nor bindings device list is available."
                 ) from exc
-            raise
+            raise  # pragma: no cover – defensive: smart_home_error always set here
 
         _LOGGER.info("Device list API: AEP bindings (legacy account).")
         self._device_list_api = DEVICE_LIST_BINDINGS
@@ -816,7 +816,9 @@ class AquaMedicClient:
             return devices if isinstance(devices, list) else []
         if isinstance(inner, list):
             return inner
-        if isinstance(raw, list):
+        if isinstance(
+            raw, list
+        ):  # pragma: no cover – defensive: raw.get() above precludes list
             return raw
         return []
 
@@ -975,7 +977,7 @@ class AquaMedicClient:
                     await self._switch_to_legacy()
                     await self.control_device(device_id, attrs)
                     return
-                raise
+                raise  # pragma: no cover – defensive: see _uses_smart_home_api
 
         url = self._legacy_urls["CONTROL"].format(device_id=device_id)
         await self._post_legacy(url, {"attrs": attrs}, authenticated=True)
