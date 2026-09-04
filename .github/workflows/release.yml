@@ -46,7 +46,7 @@ jobs:
       - name: Pack integration ZIP
         run: |
           # On se place à la racine pour inclure le dossier custom_components
-          zip -r aquamedic.zip custom_components/reef_maintenance
+          zip -r aquamedic.zip custom_components/aquamedic
 
       # 🚀 2. Publication avec le bon Asset
       - name: Create Release with Zip Asset
