@@ -1,4 +1,10 @@
 repos:
+  - repo: https://github.com/Elwinmage/create_ha_project
+    rev: v1.0.1
+    hooks:
+      - id: check-mdi
+
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
