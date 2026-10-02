@@ -216,12 +216,10 @@ class AquaMedicSwitchEntity(AquaMedicEntity, SwitchEntity):  # type: ignore[misc
         return self._desc.icon_off or self._desc.icon or None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await self.coordinator._client.control_device(self._did, {self._desc.attr: 1})
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_control(self._did, {self._desc.attr: 1})
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.coordinator._client.control_device(self._did, {self._desc.attr: 0})
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_control(self._did, {self._desc.attr: 0})
 
 
 # ── Local 0-10V switch ────────────────────────────────────────────────────────

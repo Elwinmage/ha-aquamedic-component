@@ -232,6 +232,32 @@
       "fault_uart": {
         "name": "UART communication fault"
       }
+    },
+    "sensor": {
+      "schedule": {
+        "name": "Schema",
+        "unit_of_measurement": "tijdvakken"
+      }
+    }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Schema instellen",
+      "description": "Vervangt het volledige tijdvakkenprogramma van een pomp. De pomp volgt het alleen zolang de timerschakelaar is ingeschakeld.",
+      "fields": {
+        "entity_id": {
+          "name": "Schemasensor",
+          "description": "Schemasensor van de te programmeren pomp(en)."
+        },
+        "device_id": {
+          "name": "Apparaat",
+          "description": "Te programmeren pomp(en), als alternatief voor de schemasensor."
+        },
+        "slots": {
+          "name": "Tijdvakken",
+          "description": "Lijst met tijdvakken (maximaal 48), elk met start en end (HH:MM of minuten sinds middernacht), mode en value. Een lege lijst wist het programma. Tijdvakken mogen elkaar niet overlappen en niet over middernacht lopen."
+        }
+      }
     }
   }
 }

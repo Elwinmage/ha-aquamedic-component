@@ -6,7 +6,6 @@ import logging
 from dataclasses import dataclass
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
@@ -15,6 +14,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .compat import BinarySensorDeviceClass
 from .const import DC_SKIMMER_PRODUCT_KEY, DOMAIN, SMARTDRIFT_PRODUCT_KEY
 from .coordinator import AquaMedicCoordinator
 from .entity import AquaMedicEntity, ReefRoleMixin

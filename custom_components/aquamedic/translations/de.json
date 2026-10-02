@@ -271,6 +271,32 @@
       "fault_uart": {
         "name": "UART-Kommunikationsfehler"
       }
+    },
+    "sensor": {
+      "schedule": {
+        "name": "Zeitplan",
+        "unit_of_measurement": "Zeitfenster"
+      }
+    }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Zeitplan festlegen",
+      "description": "Ersetzt das gesamte Zeitfenster-Programm einer Pumpe. Die Pumpe folgt ihm nur, solange ihr Timer-Schalter eingeschaltet ist.",
+      "fields": {
+        "entity_id": {
+          "name": "Zeitplan-Sensor",
+          "description": "Zeitplan-Sensor der zu programmierenden Pumpe(n)."
+        },
+        "device_id": {
+          "name": "Gerät",
+          "description": "Zu programmierende Pumpe(n), alternativ zum Zeitplan-Sensor."
+        },
+        "slots": {
+          "name": "Zeitfenster",
+          "description": "Liste der Zeitfenster (höchstens 48), jeweils mit start und end (HH:MM oder Minuten seit Mitternacht), mode und value. Eine leere Liste löscht das Programm. Zeitfenster dürfen sich weder überschneiden noch über Mitternacht reichen."
+        }
+      }
     }
   }
 }

@@ -5,9 +5,12 @@ from __future__ import annotations
 import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 
 from .client import AquaMedicAuthError, AquaMedicClient, AquaMedicConnectionError
 from .const import (
@@ -27,10 +30,68 @@ from .const import (
 )
 from .coordinator import AquaMedicCoordinator
 from .maintenance import MaintenanceStore
+from .services import async_register_services, async_unregister_services
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[str] = ["switch", "select", "number", "binary_sensor", "button"]
+PLATFORMS: list[str] = [
+    "switch",
+    "select",
+    "number",
+    "binary_sensor",
+    "button",
+    "sensor",
+]
+
+# The integration is set up from the UI only; this tells hassfest so, now
+# that async_setup() exists to register the services.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the integration services."""
+    async_register_services(hass)
+    return True
+
+
+def _device_dids(device: dr.DeviceEntry) -> set[str]:
+    """Gizwits device ids carried by a device registry entry."""
+    return {ident[1] for ident in device.identifiers if ident[0] == DOMAIN}
+
+
+@callback
+def _async_remove_stale_devices(
+    hass: HomeAssistant, entry: ConfigEntry, known_dids: set[str]
+) -> int:
+    """Detach from this entry the devices the account no longer reports.
+
+    Nothing else ever removes a device: a pump unbound from the account, or
+    one whose Gizwits ``did`` changed (the cloud issues a new one when a pump
+    is reset and bound again, and so did the local simulator on every start),
+    stayed in the registry next to its replacement. Each occurrence added one
+    more copy of every pump, with entity ids suffixed ``_2``, ``_3``...
+
+    Callers must only pass a list that really came from the cloud: an empty
+    one is not acted upon, so a transient empty answer cannot wipe the
+    registry (and with it every entity customisation).
+    """
+    if not known_dids:
+        return 0
+    dev_reg = dr.async_get(hass)
+    removed = 0
+    for device in dr.async_entries_for_config_entry(dev_reg, entry.entry_id):
+        dids = _device_dids(device)
+        if not dids or dids & known_dids:
+            continue
+        _LOGGER.info(
+            "[Aqua Medic] Removing stale device '%s' (did=%s): no longer "
+            "reported by the account",
+            device.name,
+            ", ".join(sorted(dids)),
+        )
+        dev_reg.async_update_device(device.id, remove_config_entry_id=entry.entry_id)
+        removed += 1
+    return removed
 
 
 def _persist_client_tokens(
@@ -133,7 +194,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 ),
             )
 
+    # Drop the registry devices this account no longer owns before the
+    # platforms run, so their entities go with them.
+    _async_remove_stale_devices(hass, entry, set(coordinator.data or {}))
+
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    # Also done in async_setup(); kept here so the services exist whichever
+    # way the entry was set up.
+    async_register_services(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -143,4 +211,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
+        if not hass.data[DOMAIN]:
+            async_unregister_services(hass)
     return unload_ok
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: ConfigEntry, device: dr.DeviceEntry
+) -> bool:
+    """Allow deleting a device from the UI once the account no longer has it."""
+    coordinator: AquaMedicCoordinator | None = hass.data.get(DOMAIN, {}).get(
+        entry.entry_id
+    )
+    known = set(coordinator.data or {}) if coordinator else set()
+    return not (_device_dids(device) & known)

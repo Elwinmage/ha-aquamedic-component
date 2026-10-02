@@ -10,7 +10,10 @@ from homeassistant.exceptions import ConfigEntryNotReady
 
 # Correct import — NOT `from ... __init__ import`, but `from ... import`
 from custom_components.aquamedic import (
+    _async_remove_stale_devices,
     _persist_client_tokens,
+    async_remove_config_entry_device,
+    async_setup,
     async_setup_entry,
     async_unload_entry,
 )
@@ -324,3 +327,136 @@ async def test_async_unload_entry_failure_keeps_coordinator(hass):
 
     assert result is False
     assert "test-entry-id" in hass.data.get(DOMAIN, {})
+
+
+# ── async_setup / services ────────────────────────────────────────────────────
+
+
+async def test_async_setup_registers_services(hass):
+    assert await async_setup(hass, {}) is True
+    assert hass.services.has_service(DOMAIN, "set_schedule")
+
+
+async def test_unloading_the_last_entry_removes_services(hass):
+    entry = _make_real_entry(hass)
+    await async_setup(hass, {})
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = MagicMock()
+
+    with patch(
+        "homeassistant.config_entries.ConfigEntries.async_unload_platforms",
+        new_callable=AsyncMock,
+        return_value=True,
+    ):
+        assert await async_unload_entry(hass, entry) is True
+
+    assert not hass.services.has_service(DOMAIN, "set_schedule")
+
+
+async def test_unloading_one_of_two_entries_keeps_services(hass):
+    entry = _make_real_entry(hass)
+    await async_setup(hass, {})
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = MagicMock()
+    hass.data[DOMAIN]["other-entry"] = MagicMock()
+
+    with patch(
+        "homeassistant.config_entries.ConfigEntries.async_unload_platforms",
+        new_callable=AsyncMock,
+        return_value=True,
+    ):
+        assert await async_unload_entry(hass, entry) is True
+
+    assert hass.services.has_service(DOMAIN, "set_schedule")
+
+
+# ── Stale devices ─────────────────────────────────────────────────────────────
+
+
+def _register_device(hass, entry, did: str, domain: str = DOMAIN):
+    from homeassistant.helpers import device_registry as dr
+
+    return dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(domain, did)},
+        name=did,
+    )
+
+
+async def test_stale_devices_are_removed(hass):
+    """A did the account no longer reports must not linger as a duplicate."""
+    from homeassistant.helpers import device_registry as dr
+
+    entry = _make_real_entry(hass)
+    kept = _register_device(hass, entry, MOCK_DID)
+    stale = _register_device(hass, entry, "old-did-from-a-previous-run")
+    foreign = _register_device(hass, entry, "x", domain="other")
+
+    assert _async_remove_stale_devices(hass, entry, {MOCK_DID}) == 1
+
+    dev_reg = dr.async_get(hass)
+    assert dev_reg.async_get(kept.id) is not None
+    assert dev_reg.async_get(stale.id) is None
+    # Devices carrying no identifier of ours are never touched.
+    assert dev_reg.async_get(foreign.id) is not None
+
+
+async def test_stale_removal_is_skipped_on_an_empty_device_list(hass):
+    """An empty answer from the cloud must never wipe the registry."""
+    from homeassistant.helpers import device_registry as dr
+
+    entry = _make_real_entry(hass)
+    device = _register_device(hass, entry, MOCK_DID)
+
+    assert _async_remove_stale_devices(hass, entry, set()) == 0
+    assert dr.async_get(hass).async_get(device.id) is not None
+
+
+async def test_setup_entry_prunes_devices_of_a_previous_run(hass):
+    """Regression: every restart with new dids used to add a copy of each pump."""
+    from homeassistant.helpers import device_registry as dr
+
+    entry = _make_real_entry(hass)
+    stale = _register_device(hass, entry, "SMAR-11111111")
+    mock_coord = _make_mock_coordinator(
+        data={MOCK_DID: MagicMock(name="SmartDrift", product_key="pk", is_online=True)}
+    )
+
+    with (
+        patch(
+            "custom_components.aquamedic.AquaMedicClient",
+            return_value=_make_mock_client(),
+        ),
+        patch(
+            "custom_components.aquamedic.AquaMedicCoordinator", return_value=mock_coord
+        ),
+        patch(
+            "custom_components.aquamedic.async_get_clientsession",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+            new_callable=AsyncMock,
+        ),
+    ):
+        assert await async_setup_entry(hass, entry) is True
+
+    assert dr.async_get(hass).async_get(stale.id) is None
+
+
+async def test_remove_config_entry_device(hass):
+    entry = _make_real_entry(hass)
+    known = _register_device(hass, entry, MOCK_DID)
+    gone = _register_device(hass, entry, "gone-did")
+    coordinator = MagicMock()
+    coordinator.data = {MOCK_DID: MagicMock()}
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+
+    # A pump the account still reports cannot be deleted by hand...
+    assert await async_remove_config_entry_device(hass, entry, known) is False
+    # ...one it no longer reports can.
+    assert await async_remove_config_entry_device(hass, entry, gone) is True
+
+
+async def test_remove_config_entry_device_when_entry_not_loaded(hass):
+    entry = _make_real_entry(hass)
+    device = _register_device(hass, entry, MOCK_DID)
+    assert await async_remove_config_entry_device(hass, entry, device) is True

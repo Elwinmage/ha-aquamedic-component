@@ -209,6 +209,32 @@
       "fault_uart": {
         "name": "UART communication fault"
       }
+    },
+    "sensor": {
+      "schedule": {
+        "name": "Harmonogram",
+        "unit_of_measurement": "przedziały"
+      }
+    }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Ustaw harmonogram",
+      "description": "Zastępuje cały program przedziałów czasowych pompy. Pompa stosuje go tylko wtedy, gdy jej przełącznik timera jest włączony.",
+      "fields": {
+        "entity_id": {
+          "name": "Czujnik harmonogramu",
+          "description": "Czujnik harmonogramu pompy lub pomp do zaprogramowania."
+        },
+        "device_id": {
+          "name": "Urządzenie",
+          "description": "Pompa lub pompy do zaprogramowania, jako alternatywa dla czujnika harmonogramu."
+        },
+        "slots": {
+          "name": "Przedziały",
+          "description": "Lista przedziałów (maksymalnie 48), każdy z start i end (HH:MM lub minuty od północy), mode i value. Pusta lista usuwa program. Przedziały nie mogą się nakładać ani przechodzić przez północ."
+        }
+      }
     }
   }
 }

@@ -232,6 +232,32 @@
       "fault_uart": {
         "name": "UART communication fault"
       }
+    },
+    "sensor": {
+      "schedule": {
+        "name": "Programmazione",
+        "unit_of_measurement": "fasce"
+      }
+    }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Imposta la programmazione",
+      "description": "Sostituisce l'intero programma a fasce orarie di una pompa. La pompa lo segue solo quando il suo interruttore del timer è attivo.",
+      "fields": {
+        "entity_id": {
+          "name": "Sensore di programmazione",
+          "description": "Sensore di programmazione della o delle pompe da programmare."
+        },
+        "device_id": {
+          "name": "Dispositivo",
+          "description": "Pompa/e da programmare, in alternativa al sensore di programmazione."
+        },
+        "slots": {
+          "name": "Fasce",
+          "description": "Elenco di fasce (48 al massimo), ciascuna con start ed end (HH:MM o minuti dalla mezzanotte), mode e value. Un elenco vuoto cancella il programma. Le fasce non devono sovrapporsi né superare la mezzanotte."
+        }
+      }
     }
   }
 }

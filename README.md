@@ -211,6 +211,51 @@ Then restart Home Assistant.
 
 ---
 
+## Time-slot schedule
+
+Every pump with a scheduler (EcoDrift / SmartDrift and the DC Runner series) stores a program of up to **48 time slots**. The pump follows it while its **Timer** switch is on.
+
+#### Sensor
+
+| Entity | Description |
+|---|---|
+| **Schedule** | Number of programmed slots. The program itself is in the `schedule` attribute. |
+
+Each entry of `schedule` describes one slot, times being minutes since midnight:
+
+```yaml
+- slot: 0
+  start: 480        # 08:00
+  end: 720          # 12:00
+  mode: auto        # DC Runner series: stop · auto · feeding
+  value: 60         # speed in %, or pause in minutes when feeding
+```
+
+A SmartDrift slot uses the wave modes (`stop`, `classic_wave`, `sine_wave`, `random_wave`, `constant_flow`, `feeding`) and also carries `frequency` (%) and `tide` (`true` for tide, `false` for pulse).
+
+#### Service `aquamedic.set_schedule`
+
+Replaces the whole program of one or several pumps. Target the **Schedule** sensor (`entity_id`) or the device (`device_id`).
+
+```yaml
+action: aquamedic.set_schedule
+data:
+  entity_id: sensor.skimmer_schedule
+  slots:
+    - { start: "08:00", end: "12:00", mode: auto, value: 60 }
+    - { start: "12:00", end: "12:15", mode: feeding, value: 10 }
+    - { start: "22:00", end: "23:59", mode: stop }
+```
+
+- `start` / `end` accept `"HH:MM"` or minutes since midnight; slots are stored in chronological order and every unused slot is cleared, so an empty list erases the program.
+- Slots must not overlap and must not cross midnight (write a night window as two slots).
+- On the DC Runner series a running slot must be at **30 % or more**, like the speed slider.
+- Only the slots that actually change are sent to the cloud.
+
+> The slot datapoints are documented by the device schema but their behaviour could only be validated against the local simulator: check the first program you write in the Aqua Medic app.
+
+---
+
 <!-- maintenance-section:start -->
 
 ## Maintenance

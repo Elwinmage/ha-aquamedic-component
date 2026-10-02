@@ -208,10 +208,7 @@ class AquaMedicNumberEntity(AquaMedicEntity, NumberEntity):  # type: ignore[misc
         return float(val) if val is not None else None
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.coordinator._client.control_device(
-            self._did, {self._desc.attr: int(value)}
-        )
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_control(self._did, {self._desc.attr: int(value)})
 
 
 class AquaMedicMaintenanceIntervalNumber(AquaMedicMaintenanceEntity, NumberEntity):  # type: ignore[misc]

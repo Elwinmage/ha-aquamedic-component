@@ -88,6 +88,18 @@ PRODUCT_NAMES: dict[str, str] = {
     "dc_skimmer": "DC_Runner",
 }
 
+# ── Time-slot scheduler ───────────────────────────────────────────────────────
+# 48 binary datapoints AutoTime00..AutoTime47, carried as hex strings by the
+# Open API. Slot length is 8 bytes on a SmartDrift and 6 on the DC Runner
+# series (see custom_components/aquamedic/schedule.py for the layout).
+SCHEDULE_SLOTS = 48
+
+
+def _blank_schedule(slot_len: int) -> dict[str, str]:
+    """Return an empty program: every slot zeroed."""
+    return {f"AutoTime{i:02d}": "00" * slot_len for i in range(SCHEDULE_SLOTS)}
+
+
 # ── Default attribute state per device type ───────────────────────────────────
 
 
@@ -106,6 +118,7 @@ def _default_attrs_smartdrift() -> dict[str, Any]:
         "AutoMode": 0,
         "AutoFlow": 50,
         "AutoFreq": 50,
+        **_blank_schedule(8),
         "Fault_Overcurrent": 0,
         "Fault_Overvoltage": 0,
         "Fault_OverTemp": 0,
@@ -133,9 +146,9 @@ def _default_attrs_dc_skimmer() -> dict[str, Any]:
 
     Applies to both the DC Skimmer and the DC Runner return pump — they share
     the same product_key and datapoint schema (verified against two independent
-    real captures: dev_alias "Abschäumer" and "AQD_032A44"). Schedule blobs
-    (AutoTimeNN, YMDData, HMSData) are intentionally omitted — the integration
-    does not expose them.
+    real captures: dev_alias "Abschäumer" and "AQD_032A44"). The 48 schedule
+    slots (AutoTimeNN) start blank; the clock blobs (YMDData, HMSData) are
+    omitted — the integration does not use them.
     """
     return {
         "SwitchON": 1,
@@ -147,6 +160,7 @@ def _default_attrs_dc_skimmer() -> dict[str, Any]:
         "FeedTime": 10,
         "AutoGears": 50,
         "AutoFeedTime": 10,
+        **_blank_schedule(6),
         "Fault_Overcurrent": 0,
         "Fault_Overvoltage": 0,
         "Fault_OverTemp": 0,
@@ -494,7 +508,11 @@ class VirtualDevice:
 
     def __init__(self, device_type: str, index: int) -> None:
         self.device_type = device_type
-        self.did = f"{device_type[:4].upper()}-{str(uuid.uuid4())[:8].upper()}"
+        # Stable across restarts: Home Assistant keys a device on its did, so
+        # a random one registered a brand new set of devices (and entities
+        # suffixed _2, _3...) every time the simulator was restarted.
+        stable = uuid.uuid5(uuid.NAMESPACE_DNS, f"aquamedic-sim.{device_type}.{index}")
+        self.did = f"{device_type[:4].upper()}-{str(stable)[:8].upper()}"
         self.product_key = PRODUCT_KEYS[device_type]
         self.product_name = PRODUCT_NAMES[device_type]
         self.alias = f"Aqua Medic {device_type.replace('_', ' ').title()} #{index + 1}"

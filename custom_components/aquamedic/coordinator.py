@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import timedelta
+from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -14,6 +16,31 @@ from .maintenance import MaintenanceStore
 
 _LOGGER = logging.getLogger(__name__)
 
+# How long a value just written is kept when the cloud still reports the
+# previous one. The Gizwits "latest" endpoint lags a few seconds behind an
+# accepted command, and the refresh that follows a write would otherwise put
+# the old value back on screen until the next poll.
+OPTIMISTIC_HOLD_SECONDS = 20.0
+
+_MISSING: Any = object()
+
+
+def _same_value(left: Any, right: Any) -> bool:
+    """Compare a written value with what the cloud reports.
+
+    The cloud answers booleans as 0/1 or true/false and binary datapoints in
+    either letter case, so plain equality would see a difference where there
+    is none.
+    """
+    if isinstance(left, bool) or isinstance(right, bool):
+        try:
+            return bool(int(left)) == bool(int(right))
+        except (TypeError, ValueError):
+            return False
+    if isinstance(left, str) and isinstance(right, str):
+        return left.lower() == right.lower()
+    return left == right
+
 
 class AquaMedicDeviceData:
     """Holds parsed state for one device."""
@@ -23,7 +50,9 @@ class AquaMedicDeviceData:
         self.product_key = device.get("product_key", "")
         self.name = device.get("dev_alias") or device.get("product_name") or "AquaMedic"
         self.is_online = AquaMedicClient.resolve_is_online(device, latest)
-        self.attrs: dict = latest.get("attr", {})
+        # A copy: optimistic writes change it, and must not reach the
+        # response it was read from.
+        self.attrs: dict = dict(latest.get("attr") or {})
         self.updated_at = latest.get("updated_at")
 
     def get(self, attr: str, default=None):
@@ -59,6 +88,9 @@ class AquaMedicCoordinator(DataUpdateCoordinator[dict[str, AquaMedicDeviceData]]
         self.maintenance: MaintenanceStore | None = None
         # Local state: did → bool (0-10V mode active)
         self._control_0_10v: dict[str, bool] = {}
+        # Values written but not confirmed by the cloud yet:
+        # did → attr → (value, monotonic deadline)
+        self._pending: dict[str, dict[str, tuple[Any, float]]] = {}
         super().__init__(
             hass,
             _LOGGER,
@@ -76,6 +108,63 @@ class AquaMedicCoordinator(DataUpdateCoordinator[dict[str, AquaMedicDeviceData]]
         """Set the 0-10V mode flag for a device and notify listeners."""
         self._control_0_10v[did] = value
         self.async_update_listeners()
+
+    # ── Optimistic writes ─────────────────────────────────────────────────────
+
+    async def async_control(self, did: str, attrs: dict[str, Any]) -> None:
+        """Send a command and show its effect at once.
+
+        The new values are put in the coordinator data before the cloud is
+        called, so every entity (and the card reading them) updates
+        immediately instead of after the round trip. If the cloud refuses
+        the command, the previous values are restored and the error is
+        raised to the caller.
+        """
+        device = self.data.get(did) if self.data else None
+        previous: dict[str, Any] = {}
+        if device is not None:
+            deadline = time.monotonic() + OPTIMISTIC_HOLD_SECONDS
+            pending = self._pending.setdefault(did, {})
+            for attr, value in attrs.items():
+                previous[attr] = device.attrs.get(attr, _MISSING)
+                device.attrs[attr] = value
+                pending[attr] = (value, deadline)
+            self.async_update_listeners()
+
+        try:
+            await self._client.control_device(did, attrs)
+        except Exception:
+            if device is not None:
+                pending = self._pending.get(did, {})
+                for attr, value in previous.items():
+                    pending.pop(attr, None)
+                    if value is _MISSING:
+                        device.attrs.pop(attr, None)
+                    else:
+                        device.attrs[attr] = value
+                self.async_update_listeners()
+            raise
+
+        await self.async_request_refresh()
+
+    def _apply_pending(self, did: str, attrs: dict[str, Any]) -> None:
+        """Keep the values just written until the cloud catches up.
+
+        A pending value is dropped as soon as the cloud reports it, or when
+        its hold expires: from then on the cloud is the truth again, so a
+        command the pump silently ignored cannot stay on screen.
+        """
+        pending = self._pending.get(did)
+        if not pending:
+            return
+        now = time.monotonic()
+        for attr, (value, deadline) in list(pending.items()):
+            if now >= deadline or _same_value(value, attrs.get(attr, _MISSING)):
+                del pending[attr]
+            else:
+                attrs[attr] = value
+        if not pending:
+            del self._pending[did]
 
     # ── Data fetch ────────────────────────────────────────────────────────────
 
@@ -99,6 +188,7 @@ class AquaMedicCoordinator(DataUpdateCoordinator[dict[str, AquaMedicDeviceData]]
                 latest = {}
 
             result[did] = AquaMedicDeviceData(device, latest)
+            self._apply_pending(did, result[did].attrs)
             _LOGGER.debug(
                 "Updated %s (%s): %s",
                 result[did].name,

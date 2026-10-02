@@ -271,6 +271,32 @@
       "fault_uart": {
         "name": "UART communication fault"
       }
+    },
+    "sensor": {
+      "schedule": {
+        "name": "Schedule",
+        "unit_of_measurement": "slots"
+      }
+    }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Set schedule",
+      "description": "Replace the whole time-slot program of a pump. The pump only follows it while its timer switch is on.",
+      "fields": {
+        "entity_id": {
+          "name": "Schedule sensor",
+          "description": "Schedule sensor of the pump(s) to program."
+        },
+        "device_id": {
+          "name": "Device",
+          "description": "Pump(s) to program, as an alternative to the schedule sensor."
+        },
+        "slots": {
+          "name": "Slots",
+          "description": "List of slots (48 at most), each with start and end (HH:MM or minutes since midnight), mode and value. An empty list clears the program. Slots must not overlap nor cross midnight."
+        }
+      }
     }
   }
 }

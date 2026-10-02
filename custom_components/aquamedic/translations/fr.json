@@ -271,6 +271,32 @@
       "fault_uart": {
         "name": "Défaut communication UART"
       }
+    },
+    "sensor": {
+      "schedule": {
+        "name": "Programmation",
+        "unit_of_measurement": "créneaux"
+      }
+    }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Définir la programmation",
+      "description": "Remplace tout le programme par créneaux d'une pompe. La pompe ne le suit que lorsque son interrupteur de minuterie est activé.",
+      "fields": {
+        "entity_id": {
+          "name": "Capteur de programmation",
+          "description": "Capteur de programmation de la ou des pompes à programmer."
+        },
+        "device_id": {
+          "name": "Appareil",
+          "description": "Pompe(s) à programmer, en alternative au capteur de programmation."
+        },
+        "slots": {
+          "name": "Créneaux",
+          "description": "Liste de créneaux (48 au maximum), chacun avec start et end (HH:MM ou minutes depuis minuit), mode et value. Une liste vide efface le programme. Les créneaux ne doivent ni se chevaucher ni passer minuit."
+        }
+      }
     }
   }
 }

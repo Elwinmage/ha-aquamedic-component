@@ -1,1 +1,22 @@
-# Define your services here
+set_schedule:
+  fields:
+    entity_id:
+      required: false
+      selector:
+        entity:
+          multiple: true
+          filter:
+            integration: aquamedic
+            domain: sensor
+    device_id:
+      required: false
+      selector:
+        device:
+          multiple: true
+          filter:
+            integration: aquamedic
+    slots:
+      required: true
+      example: '[{"start": "08:00", "end": "12:00", "mode": "auto", "value": 60}]'
+      selector:
+        object:

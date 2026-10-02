@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+import time
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.helpers.update_coordinator import UpdateFailed
@@ -10,8 +11,10 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from custom_components.aquamedic.client import AquaMedicConnectionError
 from custom_components.aquamedic.const import SMARTDRIFT_PRODUCT_KEY
 from custom_components.aquamedic.coordinator import (
+    OPTIMISTIC_HOLD_SECONDS,
     AquaMedicCoordinator,
     AquaMedicDeviceData,
+    _same_value,
 )
 from tests.conftest import (
     MOCK_ATTRS,
@@ -138,3 +141,140 @@ def test_control_0_10v_toggle(coordinator):
 
 def test_control_0_10v_unknown_device(coordinator):
     assert coordinator.get_control_0_10v("unknown-did") is False
+
+
+# ── Optimistic writes ─────────────────────────────────────────────────────────
+
+
+def test_device_data_copies_its_attributes():
+    """An optimistic write must not leak into the response it was read from."""
+    latest = {"attr": {"SwitchON": 1}}
+    data = AquaMedicDeviceData(MOCK_DEVICE_ONLINE, latest)
+    data.attrs["SwitchON"] = 0
+    assert latest["attr"]["SwitchON"] == 1
+
+
+@pytest.mark.parametrize(
+    ("left", "right", "expected"),
+    [
+        (1, 1, True),
+        (1, True, True),
+        (0, False, True),
+        (True, "1", True),
+        (1, False, False),
+        (True, "on", False),  # not a number: cannot be the same boolean
+        (True, None, False),
+        ("08000C1E013C", "08000c1e013c", True),
+        ("abc", "abd", False),
+        (60, 60.0, True),
+        (60, 61, False),
+        (1, "经典造浪", False),
+    ],
+)
+def test_same_value(left, right, expected):
+    assert _same_value(left, right) is expected
+
+
+async def test_control_shows_the_new_value_before_the_cloud_answers(coordinator):
+    seen: list = []
+
+    async def _control(did, attrs):
+        # Called after the optimistic update: the entity already shows it.
+        seen.append(coordinator.data[MOCK_DID].get("Flow"))
+
+    coordinator._client.control_device = AsyncMock(side_effect=_control)
+
+    await coordinator.async_control(MOCK_DID, {"Flow": 40})
+
+    assert seen == [40]
+    assert coordinator.data[MOCK_DID].get("Flow") == 40
+    coordinator._client.control_device.assert_awaited_once_with(MOCK_DID, {"Flow": 40})
+    assert coordinator.async_update_listeners.call_count == 1
+    coordinator.async_request_refresh.assert_awaited_once()
+
+
+async def test_control_restores_the_previous_values_when_the_cloud_refuses(
+    coordinator,
+):
+    coordinator._client.control_device = AsyncMock(
+        side_effect=AquaMedicConnectionError("boom")
+    )
+    before = coordinator.data[MOCK_DID].get("Flow")
+
+    with pytest.raises(AquaMedicConnectionError):
+        # AutoTime00 is not reported by this pump: it must disappear again.
+        await coordinator.async_control(MOCK_DID, {"Flow": 40, "AutoTime00": "00"})
+
+    assert coordinator.data[MOCK_DID].get("Flow") == before
+    assert "AutoTime00" not in coordinator.data[MOCK_DID].attrs
+    assert coordinator._pending.get(MOCK_DID) == {}
+    # Shown, then taken back.
+    assert coordinator.async_update_listeners.call_count == 2
+    coordinator.async_request_refresh.assert_not_awaited()
+
+
+async def test_control_of_an_unknown_device_is_only_forwarded(coordinator):
+    await coordinator.async_control("other-did", {"Flow": 40})
+    coordinator._client.control_device.assert_awaited_once_with(
+        "other-did", {"Flow": 40}
+    )
+    coordinator.async_update_listeners.assert_not_called()
+
+    coordinator._client.control_device = AsyncMock(
+        side_effect=AquaMedicConnectionError("boom")
+    )
+    with pytest.raises(AquaMedicConnectionError):
+        await coordinator.async_control("other-did", {"Flow": 40})
+    coordinator.async_update_listeners.assert_not_called()
+
+
+async def test_control_without_data_is_only_forwarded(coordinator):
+    coordinator.data = None
+    await coordinator.async_control(MOCK_DID, {"Flow": 40})
+    coordinator._client.control_device.assert_awaited_once()
+
+
+async def test_pending_value_survives_a_lagging_poll(hass, mock_client):
+    """The refresh right after a write often still reads the old value."""
+    coord = AquaMedicCoordinator(hass, mock_client, scan_interval=30)
+    coord.data = await coord._async_update_data()
+    assert coord.data[MOCK_DID].get("Flow") == 75
+
+    with patch.object(coord, "async_request_refresh", AsyncMock()):
+        await coord.async_control(MOCK_DID, {"Flow": 40})
+
+    # The cloud still says 75: the written value is kept.
+    lagging = await coord._async_update_data()
+    assert lagging[MOCK_DID].get("Flow") == 40
+    assert MOCK_DID in coord._pending
+
+
+async def test_pending_value_is_dropped_once_the_cloud_confirms(hass, mock_client):
+    coord = AquaMedicCoordinator(hass, mock_client, scan_interval=30)
+    coord.data = await coord._async_update_data()
+    with patch.object(coord, "async_request_refresh", AsyncMock()):
+        await coord.async_control(MOCK_DID, {"Flow": 40})
+
+    mock_client.get_device_data = AsyncMock(
+        return_value={"attr": {**MOCK_ATTRS, "Flow": 40}}
+    )
+    confirmed = await coord._async_update_data()
+    assert confirmed[MOCK_DID].get("Flow") == 40
+    assert MOCK_DID not in coord._pending
+
+
+async def test_pending_value_expires_and_the_cloud_wins_again(hass, mock_client):
+    """A command the pump ignored must not stay on screen forever."""
+    coord = AquaMedicCoordinator(hass, mock_client, scan_interval=30)
+    coord.data = await coord._async_update_data()
+    with patch.object(coord, "async_request_refresh", AsyncMock()):
+        await coord.async_control(MOCK_DID, {"Flow": 40, "Frequency": 10})
+
+    later = time.monotonic() + OPTIMISTIC_HOLD_SECONDS + 1
+    with patch(
+        "custom_components.aquamedic.coordinator.time.monotonic", return_value=later
+    ):
+        expired = await coord._async_update_data()
+    assert expired[MOCK_DID].get("Flow") == 75
+    assert expired[MOCK_DID].get("Frequency") == 50
+    assert MOCK_DID not in coord._pending

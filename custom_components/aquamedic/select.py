@@ -163,8 +163,7 @@ class AquaMedicSelectEntity(AquaMedicEntity, SelectEntity):  # type: ignore[misc
         except ValueError:
             _LOGGER.error("Invalid option '%s' for %s", option, self._desc.key)
             return
-        await self.coordinator._client.control_device(self._did, {self._desc.attr: idx})
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_control(self._did, {self._desc.attr: idx})
 
 
 class AquaMedicPumpRoleSelect(ReefRoleMixin, AquaMedicEntity, SelectEntity):  # type: ignore[misc]

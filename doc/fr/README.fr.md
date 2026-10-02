@@ -222,6 +222,51 @@ Puis redémarrez Home Assistant.
 
 ---
 
+## Programmation par créneaux
+
+Chaque pompe dotée d'un programmateur (EcoDrift / SmartDrift et la série DC Runner) mémorise un programme de **48 créneaux** au maximum. La pompe le suit tant que son interrupteur **Minuterie** est activé.
+
+#### Capteur
+
+| Entité | Description |
+|---|---|
+| **Programmation** | Nombre de créneaux programmés. Le programme lui-même est dans l'attribut `schedule`. |
+
+Chaque entrée de `schedule` décrit un créneau, les heures étant exprimées en minutes depuis minuit :
+
+```yaml
+- slot: 0
+  start: 480        # 08:00
+  end: 720          # 12:00
+  mode: auto        # série DC Runner : stop · auto · feeding
+  value: 60         # vitesse en %, ou pause en minutes en mode nourrissage
+```
+
+Un créneau SmartDrift utilise les modes de brassage (`stop`, `classic_wave`, `sine_wave`, `random_wave`, `constant_flow`, `feeding`) et porte aussi `frequency` (%) et `tide` (`true` pour marée, `false` pour impulsion).
+
+#### Service `aquamedic.set_schedule`
+
+Remplace tout le programme d'une ou plusieurs pompes. Ciblez le capteur **Programmation** (`entity_id`) ou l'appareil (`device_id`).
+
+```yaml
+action: aquamedic.set_schedule
+data:
+  entity_id: sensor.ecumeur_programmation
+  slots:
+    - { start: "08:00", end: "12:00", mode: auto, value: 60 }
+    - { start: "12:00", end: "12:15", mode: feeding, value: 10 }
+    - { start: "22:00", end: "23:59", mode: stop }
+```
+
+- `start` / `end` acceptent `"HH:MM"` ou des minutes depuis minuit ; les créneaux sont rangés par ordre chronologique et tout créneau inutilisé est effacé : une liste vide supprime donc le programme.
+- Les créneaux ne doivent ni se chevaucher ni passer minuit (écrivez une plage de nuit en deux créneaux).
+- Sur la série DC Runner, un créneau en marche doit être à **30 % ou plus**, comme le curseur de vitesse.
+- Seuls les créneaux réellement modifiés sont envoyés au cloud.
+
+> Les datapoints des créneaux sont décrits par le schéma de l'appareil, mais leur comportement n'a pu être validé que sur le simulateur local : vérifiez dans l'application Aqua Medic le premier programme que vous écrivez.
+
+---
+
 <!-- maintenance-section:start -->
 
 ## Maintenance

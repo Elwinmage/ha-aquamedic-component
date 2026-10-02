@@ -232,6 +232,32 @@
       "fault_uart": {
         "name": "UART communication fault"
       }
+    },
+    "sensor": {
+      "schedule": {
+        "name": "Programação",
+        "unit_of_measurement": "intervalos"
+      }
+    }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Definir a programação",
+      "description": "Substitui todo o programa por intervalos horários de uma bomba. A bomba só o segue enquanto o seu interruptor de temporizador estiver ligado.",
+      "fields": {
+        "entity_id": {
+          "name": "Sensor de programação",
+          "description": "Sensor de programação da ou das bombas a programar."
+        },
+        "device_id": {
+          "name": "Dispositivo",
+          "description": "Bomba(s) a programar, em alternativa ao sensor de programação."
+        },
+        "slots": {
+          "name": "Intervalos",
+          "description": "Lista de intervalos (48 no máximo), cada um com start e end (HH:MM ou minutos desde a meia-noite), mode e value. Uma lista vazia apaga o programa. Os intervalos não devem sobrepor-se nem atravessar a meia-noite."
+        }
+      }
     }
   }
 }

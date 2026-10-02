@@ -232,6 +232,32 @@
       "fault_uart": {
         "name": "UART communication fault"
       }
+    },
+    "sensor": {
+      "schedule": {
+        "name": "Programación",
+        "unit_of_measurement": "franjas"
+      }
+    }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Definir la programación",
+      "description": "Sustituye todo el programa por franjas horarias de una bomba. La bomba solo lo sigue mientras su interruptor de temporizador está activado.",
+      "fields": {
+        "entity_id": {
+          "name": "Sensor de programación",
+          "description": "Sensor de programación de la o las bombas a programar."
+        },
+        "device_id": {
+          "name": "Dispositivo",
+          "description": "Bomba(s) a programar, como alternativa al sensor de programación."
+        },
+        "slots": {
+          "name": "Franjas",
+          "description": "Lista de franjas (48 como máximo), cada una con start y end (HH:MM o minutos desde medianoche), mode y value. Una lista vacía borra el programa. Las franjas no deben solaparse ni cruzar la medianoche."
+        }
+      }
     }
   }
 }

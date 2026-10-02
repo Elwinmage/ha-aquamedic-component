@@ -4,7 +4,8 @@
 Expected keys are discovered from the source, never hardcoded:
 
 - Static entities: any literal ``translation_key="..."`` found in a platform
-  module (button.py, number.py, select.py, switch.py, binary_sensor.py). The
+  module (button.py, number.py, select.py, sensor.py, switch.py,
+  binary_sensor.py). The
   file name gives the platform section of ``entity``.
 - Maintenance entities: their keys are built at runtime from the catalogue
   (``maint_<task>``, ``maint_<task>_interval_<unit>``, ``maint_<task>_notify``)
@@ -38,6 +39,7 @@ PLATFORM_FILES = {
     "button.py": "button",
     "number.py": "number",
     "select.py": "select",
+    "sensor.py": "sensor",
     "switch.py": "switch",
 }
 

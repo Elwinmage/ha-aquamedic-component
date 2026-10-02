@@ -15,7 +15,6 @@ import logging
 import pathlib
 from typing import Any
 
-import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
@@ -34,6 +33,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .client import AquaMedicAuthError, AquaMedicClient, AquaMedicConnectionError
+from .compat import vol
 from .const import (
     CONF_ACCESS_TOKEN,
     CONF_API_MODE,
