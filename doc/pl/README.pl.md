@@ -222,6 +222,10 @@ Następnie zrestartuj Home Assistant.
 
 ---
 
+## Z ha-reef-card
+
+[ha-reef-card](https://github.com/Elwinmage/ha-reef-card) pokazuje każdą pompę na pulpicie: jej prędkość na obrazie, zgłaszane usterki, poruszaną wodę oraz program przedziałów czasowych, edytowany z karty (usługą `aquamedic.set_schedule`). DC Runner jest pokazywana jako pompa powrotna albo pompa odpieniacza, zgodnie z rolą zadeklarowaną w integracji. Zobacz [stronę Aqua Medic](https://github.com/Elwinmage/ha-reef-card/blob/main/doc/pl/aquamedic.pl.md#aqua-medic) karty.
+
 <!-- maintenance-section:start -->
 
 ## Konserwacja

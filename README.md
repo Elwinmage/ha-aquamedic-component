@@ -256,6 +256,10 @@ data:
 
 ---
 
+## With ha-reef-card
+
+[ha-reef-card](https://github.com/Elwinmage/ha-reef-card) shows each pump on your dashboard: its speed on the picture, the faults it raises, the water it moves and its time-slot program, which is edited from the card (through `aquamedic.set_schedule`). A DC Runner is shown as a return pump or as a skimmer pump, following the role declared in the integration. See the [Aqua Medic page](https://github.com/Elwinmage/ha-reef-card/blob/main/doc/en/aquamedic.md#aqua-medic) of the card.
+
 <!-- maintenance-section:start -->
 
 ## Maintenance

@@ -267,6 +267,10 @@ data:
 
 ---
 
+## Avec ha-reef-card
+
+[ha-reef-card](https://github.com/Elwinmage/ha-reef-card) affiche chaque pompe sur votre tableau de bord : sa vitesse sur l'image, les défauts qu'elle remonte, l'eau qu'elle déplace et son programme par créneaux, modifiable depuis la carte (via `aquamedic.set_schedule`). Une DC Runner est affichée en pompe de remontée ou en pompe d'écumeur, selon le rôle déclaré dans l'intégration. Voir la [page Aqua Medic](https://github.com/Elwinmage/ha-reef-card/blob/main/doc/fr/aquamedic.fr.md#aqua-medic) de la carte.
+
 <!-- maintenance-section:start -->
 
 ## Maintenance

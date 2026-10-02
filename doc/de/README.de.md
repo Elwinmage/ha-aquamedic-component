@@ -222,6 +222,10 @@ Starten Sie dann Home Assistant neu.
 
 ---
 
+## Mit ha-reef-card
+
+[ha-reef-card](https://github.com/Elwinmage/ha-reef-card) zeigt jede Pumpe auf Ihrem Dashboard: ihre Geschwindigkeit auf dem Bild, die gemeldeten Fehler, das bewegte Wasser und ihr Zeitfenster-Programm, das in der Karte bearbeitet wird (über `aquamedic.set_schedule`). Eine DC Runner wird als Förderpumpe oder als Abschäumerpumpe gezeigt, je nach der in der Integration festgelegten Rolle. Siehe die [Aqua-Medic-Seite](https://github.com/Elwinmage/ha-reef-card/blob/main/doc/de/aquamedic.de.md#aqua-medic) der Karte.
+
 <!-- maintenance-section:start -->
 
 ## Wartung

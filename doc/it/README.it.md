@@ -222,6 +222,10 @@ Quindi riavviare Home Assistant.
 
 ---
 
+## Con ha-reef-card
+
+[ha-reef-card](https://github.com/Elwinmage/ha-reef-card) mostra ogni pompa sulla dashboard: la sua velocità sull'immagine, i guasti che segnala, l'acqua che muove e il suo programma a fasce, modificabile dalla card (tramite `aquamedic.set_schedule`). Una DC Runner viene mostrata come pompa di risalita o come pompa dello schiumatoio, secondo il ruolo dichiarato nell'integrazione. Vedi la [pagina Aqua Medic](https://github.com/Elwinmage/ha-reef-card/blob/main/doc/it/aquamedic.it.md#aqua-medic) della card.
+
 <!-- maintenance-section:start -->
 
 ## Manutenzione

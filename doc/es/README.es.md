@@ -222,6 +222,10 @@ Luego reinicie Home Assistant.
 
 ---
 
+## Con ha-reef-card
+
+[ha-reef-card](https://github.com/Elwinmage/ha-reef-card) muestra cada bomba en su panel: su velocidad sobre la imagen, los fallos que señala, el agua que mueve y su programa por tramos, que se edita desde la tarjeta (mediante `aquamedic.set_schedule`). Una DC Runner se muestra como bomba de retorno o como bomba de skimmer, según el rol declarado en la integración. Consulte la [página Aqua Medic](https://github.com/Elwinmage/ha-reef-card/blob/main/doc/es/aquamedic.es.md#aqua-medic) de la tarjeta.
+
 <!-- maintenance-section:start -->
 
 ## Mantenimiento
