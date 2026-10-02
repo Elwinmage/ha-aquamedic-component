@@ -28,11 +28,11 @@ jobs:
 
       - name: Autoupdate hooks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-          pre-commit autoupdate
-
+          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ secrets.HOOKS_REPO_TOKEN }}@github.com/Elwinmage/create_ha_project.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/Elwinmage/create_ha_project
+        run: pre-commit autoupdate
+        
       - name: Create PR
         uses: peter-evans/create-pull-request@v6
         with:
