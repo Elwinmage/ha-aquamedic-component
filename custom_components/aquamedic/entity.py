@@ -12,7 +12,13 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DC_RUNNER_PRODUCT_KEY, DC_RUNNER_SERIES_PRODUCT_KEY, DOMAIN
 from .coordinator import AquaMedicCoordinator, AquaMedicDeviceData
-from .maintenance import MaintenanceStore, MaintenanceTask, get_store
+from .maintenance import (
+    PUMP_ROLE_UNKNOWN,
+    MaintenanceStore,
+    MaintenanceTask,
+    get_store,
+    role_is_user_defined,
+)
 
 # Product keys handled as the "DC Runner" line — return-pump and skimmer
 # variants share the DC Runner series firmware, and the speculative legacy PK
@@ -31,6 +37,55 @@ def resolve_model(product_key: str | None) -> str:
     if product_key in _DC_RUNNER_MODEL_PRODUCT_KEYS:
         return "DC Runner"
     return "SmartDrift"
+
+
+def resolve_model_id(product_key: str | None, role: str | None) -> str | None:
+    """Return the device registry ``model_id`` carrying the declared pump role.
+
+    The DC Runner return pump and the DC Skimmer are both registered with the
+    model "DC Runner" (see resolve_model()); what tells them apart is the role
+    the user declares through the ``pump_role`` select. That select is an
+    entity: once the device is disabled in Home Assistant it has no state and
+    is not even listed to the frontend, so ha-reef-card can no longer tell
+    which picture to draw behind its "disabled" banner.
+
+    The device registry entry, on the other hand, stays visible while the
+    device is disabled. Publishing the role there as ``model_id`` ("return" or
+    "skimmer") gives the card a value that survives the disabling.
+
+    Returns None when the product key is not ambiguous, or when the role has
+    not been declared yet.
+    """
+    if not role_is_user_defined(product_key):
+        return None
+    if not role or role == PUMP_ROLE_UNKNOWN:
+        return None
+    return role
+
+
+def build_device_info(coordinator: Any, did: str) -> DeviceInfo:
+    """Build the DeviceInfo of a device from the coordinator data.
+
+    Shared by AquaMedicEntity and AquaMedicLocalSwitchEntity so every entity
+    of a device registers it with the same model and the same ``model_id``.
+    """
+    data = getattr(coordinator, "data", None)
+    dev = data.get(did) if data else None
+    product_key = dev.product_key if dev else None
+    # The role store is only consulted for the ambiguous product keys, so a
+    # SmartDrift never triggers the lazy creation of a fallback store.
+    role = (
+        get_store(coordinator).get_role(did)
+        if role_is_user_defined(product_key)
+        else None
+    )
+    return DeviceInfo(
+        identifiers={(DOMAIN, did)},
+        name=dev.name if dev else did,
+        manufacturer="Aqua Medic",
+        model=resolve_model(product_key),
+        model_id=resolve_model_id(product_key, role),
+    )
 
 
 class ReefRoleMixin:
@@ -89,15 +144,7 @@ class AquaMedicEntity(CoordinatorEntity[AquaMedicCoordinator]):
     @cached_property
     def device_info(self) -> DeviceInfo:  # type: ignore[reportIncompatibleVariableOverride]
         """Build DeviceInfo from coordinator device data."""
-        dev = self._device
-        name = dev.name if dev else self._did
-        model = resolve_model(dev.product_key if dev else None)
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._did)},
-            name=name,
-            manufacturer="Aqua Medic",
-            model=model,
-        )
+        return build_device_info(self.coordinator, self._did)
 
     # available is intentionally NOT overridden here.
     # Each platform entity overrides it directly with # type: ignore[override]

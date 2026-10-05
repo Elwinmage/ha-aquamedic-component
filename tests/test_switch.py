@@ -329,3 +329,35 @@ async def test_local_switch_no_restore_when_none(coordinator):
         await entity.async_added_to_hass()
 
     assert coordinator.get_control_0_10v(MOCK_DID) is False
+
+
+async def test_local_switch_device_info_publishes_the_role(coordinator):
+    """The local switch registers the device with the same model_id."""
+    from custom_components.aquamedic.const import DC_RUNNER_SERIES_PRODUCT_KEY
+    from custom_components.aquamedic.coordinator import AquaMedicDeviceData
+    from custom_components.aquamedic.maintenance import get_store
+    from custom_components.aquamedic.switch import (
+        AquaMedicLocalSwitchEntity,
+        AquaMedicSwitchDescription,
+        _SwitchKind,
+    )
+    from tests.conftest import MOCK_DEVICE_ONLINE, MOCK_LATEST
+
+    coordinator.data = {
+        MOCK_DID: AquaMedicDeviceData(
+            {**MOCK_DEVICE_ONLINE, "product_key": DC_RUNNER_SERIES_PRODUCT_KEY},
+            MOCK_LATEST,
+        )
+    }
+    await get_store(coordinator).async_set_role(MOCK_DID, "return")
+    desc = AquaMedicSwitchDescription(
+        key="control_0_10v",
+        translation_key="control_0_10v",
+        attr="",
+        kind=_SwitchKind.LOCAL,
+        icon="mdi:tune-variant",
+        icon_off="mdi:tune-variant",
+    )
+    info = AquaMedicLocalSwitchEntity(coordinator, MOCK_DID, desc).device_info
+    assert info["model"] == "DC Runner"
+    assert info["model_id"] == "return"

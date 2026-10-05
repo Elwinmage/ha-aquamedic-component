@@ -24,7 +24,11 @@ from .const import (
     SMARTDRIFT_PRODUCT_KEY,
 )
 from .coordinator import AquaMedicCoordinator
-from .entity import AquaMedicEntity, AquaMedicMaintenanceEntity, resolve_model
+from .entity import (
+    AquaMedicEntity,
+    AquaMedicMaintenanceEntity,
+    build_device_info,
+)
 from .maintenance import MaintenanceTask, get_store, tasks_for_device
 
 _LOGGER = logging.getLogger(__name__)
@@ -269,18 +273,10 @@ class AquaMedicLocalSwitchEntity(  # type: ignore[misc, reportIncompatibleVariab
 
         AquaMedicLocalSwitchEntity intentionally does NOT inherit from
         AquaMedicEntity (MRO conflict with SwitchEntity), so we cannot rely
-        on the base class device_info. We reuse the shared model resolver to
-        keep the mapping DRY.
+        on the base class device_info. We reuse the shared builder so both
+        register the device with the same model and model_id.
         """
-        dev = self.coordinator.data.get(self._did) if self.coordinator.data else None
-        name = dev.name if dev else self._did
-        model = resolve_model(dev.product_key if dev else None)
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._did)},
-            name=name,
-            manufacturer="Aqua Medic",
-            model=model,
-        )
+        return build_device_info(self.coordinator, self._did)
 
     async def async_added_to_hass(self) -> None:
         """Restore last state on HA restart."""
