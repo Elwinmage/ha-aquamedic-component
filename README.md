@@ -19,6 +19,18 @@ Control your Aqua Medic pumps from Home Assistant via the Gizwits cloud API.
 
 ---
 
+<!-- generated:demo-videos:start -->
+
+## 🎬 Demo videos
+
+<table>
+<tr>
+<td><a href="https://www.youtube.com/watch?v=9Gh4YE6Ck9g"><img src="https://img.youtube.com/vi/9Gh4YE6Ck9g/0.jpg" alt="Aqua Medic demo" width="300"/></a><br/><em>Aqua Medic demo</em></td>
+</tr>
+</table>
+
+<!-- generated:demo-videos:end -->
+
 <!-- ecosystem:start -->
 
 ## Related projects
@@ -53,7 +65,7 @@ The ReefTech projects fit together: the integrations bring your equipment into H
   <tr>
     <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-card/main/icon.png" width="64" alt="ha-reef-card" /></td>
     <td>🪸<br /><a href="https://github.com/Elwinmage/ha-reef-card"><b>ha-reef-card</b></a></td>
-    <td>Interactive graphical view of each device on your dashboard, and the only way to edit advanced schedules. Reads the three integrations above through the shared <code>reef_role</code> contract, with no card-side configuration.</td>
+    <td>Interactive graphical view of each device on your dashboard, and the only way to edit advanced schedules. Reads the three integrations above through the shared <code>reef_role</code> contract, with no card-side configuration. Also draws the power flows of reefbeatEnergyBackup.</td>
     <td>all three integrations</td>
   </tr>
   <tr>
@@ -66,7 +78,7 @@ The ReefTech projects fit together: the integrations bring your equipment into H
     <td><img src="https://raw.githubusercontent.com/Elwinmage/reefbeatEnergyBackup/main/icon.png" width="64" alt="reefbeatEnergyBackup" /></td>
     <td>⚡<br /><a href="https://github.com/Elwinmage/reefbeatEnergyBackup"><b>reefbeatEnergyBackup</b></a></td>
     <td>Battery backup for power outages. A 24V LiFePO₄ pack driven by a Raspberry Pi, with pump speed degraded progressively according to the state of charge.</td>
-    <td>standalone, or alongside ha-reefbeat-component</td>
+    <td>standalone, or alongside ha-reefbeat-component and ha-reef-card</td>
   </tr>
 </table>
 
@@ -86,9 +98,6 @@ Your device is not supported? Please contact me.
 | Aqua Medic DC Runner series — return pump | <img alt="DC Runner" src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/doc/img/runner.png" width="200" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic DC Runner series — skimmer pump | <img alt="skimmer" src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/doc/img/skimmer.png" width="200" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic DC Runner (legacy / speculative) | | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
-| Aqua Medic Reefdoser EVO | <img width="458" height="458" alt="image" src="https://github.com/user-attachments/assets/b5e98032-9cea-4647-9443-18d4d68a275d" />| `Dosing_Pump` | `a1f9488390b4458f9676677f51664324` | ❌ |
-| Aqua Medic T-Controller Twin | | `Temp_Ctrl` | `f6a8e5d2c1b04a9e8d7c6b5a4f3e2d1c` | ❌ |
-| Aqua Medic Aquarius / Spectrus | | `Light_Ctrl` | `7d2e9b8a1c3f4e5d6a7b8c9d0e1f2a3b` | ❌ |
 
 > The DC Runner **return pump** and **skimmer pump** share the same firmware and Gizwits product key. They expose an identical datapoint set (verified against two independent real-device captures) and are handled by the same code path — the two rows above are the same device with different pump heads. In Home Assistant they both appear as model *DC Runner*; use the device alias to distinguish which pump is which.
 >
