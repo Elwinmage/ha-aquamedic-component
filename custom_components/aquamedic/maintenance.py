@@ -35,7 +35,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Final
 
 from homeassistant.core import HomeAssistant, callback
@@ -390,7 +390,7 @@ class MaintenanceStore:
 
     async def async_reset(self, did: str, task_key: str) -> datetime:
         """Mark a maintenance task done now, persist, and notify listeners."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         state = self.get_state(did, task_key)
         state.last_reset = now
         await self._async_save()
@@ -502,7 +502,7 @@ def compute_days_left(
     """
     if last_reset is None:
         return None
-    ref = now or datetime.now(timezone.utc)
+    ref = now or datetime.now(UTC)
     elapsed = (ref - last_reset).total_seconds() / 86400.0
     remaining = interval_days - elapsed
     # Floor: a partially used day still counts, in both directions.
@@ -526,5 +526,5 @@ def _parse_dt(value: Any) -> datetime | None:
     except ValueError:
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt

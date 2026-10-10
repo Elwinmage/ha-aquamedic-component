@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -129,7 +129,7 @@ async def test_button_press_records_the_reset(button, store):
 async def test_button_reports_overdue(button, store):
     # 19.5 days elapsed on a 14-day interval -> -5.5, floored away from zero.
     # A whole number of days would sit exactly on the rounding boundary.
-    stale = datetime.now(timezone.utc) - timedelta(days=19, hours=12)
+    stale = datetime.now(UTC) - timedelta(days=19, hours=12)
     store.get_state(MOCK_DID, "skimmer_cup_clean").last_reset = stale
     attrs = button.extra_state_attributes
     assert attrs is not None
