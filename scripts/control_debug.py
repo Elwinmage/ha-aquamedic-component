@@ -261,7 +261,7 @@ async def _probe(
             return resp.status, data
     except aiohttp.ClientConnectorError as exc:
         return -1, f"Connection error: {exc}"
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return -2, "Timeout"
     except Exception as exc:
         return -3, f"Error: {exc}"

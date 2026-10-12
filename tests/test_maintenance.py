@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
@@ -131,7 +131,7 @@ async def test_interval_override_is_kept(store):
 
 async def test_reset_stamps_now(store):
     await store.async_load()
-    before = datetime.now(timezone.utc)
+    before = datetime.now(UTC)
     stamped = await store.async_reset(MOCK_DID, "drift_descale")
     assert stamped >= before
     assert store.get_last_reset(MOCK_DID, "drift_descale") == stamped
@@ -213,7 +213,7 @@ async def test_naive_timestamp_is_read_as_utc(hass, hass_storage):
     store = MaintenanceStore(hass, "naive")
     await store.async_load()
     last = store.get_last_reset(MOCK_DID, "drift_descale")
-    assert last is not None and last.tzinfo is timezone.utc
+    assert last is not None and last.tzinfo is UTC
 
 
 # ── Store: listeners ──────────────────────────────────────────────────────────
@@ -298,26 +298,26 @@ def test_days_left_is_none_when_never_reset():
 
 
 def test_days_left_counts_down():
-    now = datetime(2026, 8, 13, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 13, 12, 0, tzinfo=UTC)
     last = now - timedelta(days=10)
     assert compute_days_left(last, 30, now) == 20
 
 
 def test_a_partially_used_day_still_counts():
-    now = datetime(2026, 8, 13, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 13, 12, 0, tzinfo=UTC)
     last = now - timedelta(days=10, hours=12)
     assert compute_days_left(last, 30, now) == 19
 
 
 def test_overdue_is_negative_and_rounded_away_from_zero():
-    now = datetime(2026, 8, 13, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 13, 12, 0, tzinfo=UTC)
     last = now - timedelta(days=30, hours=1)
     assert compute_days_left(last, 30, now) == -1
     assert is_overdue(last, 30, now) is True
 
 
 def test_days_left_uses_now_by_default():
-    last = datetime.now(timezone.utc) - timedelta(days=1)
+    last = datetime.now(UTC) - timedelta(days=1)
     assert compute_days_left(last, 30) == 28
 
 
