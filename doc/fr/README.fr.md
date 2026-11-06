@@ -4,7 +4,7 @@
   <img src="../../icon.png" width="50%"/>
 </p>
 
-[![HACS Badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/hacs)
+[![Marketplace Badge](https://img.shields.io/badge/Marketplace-Default-41BDF5.svg?style=flat-square)](https://github.com/hacs/default)
 [![IoT Class](https://img.shields.io/badge/IoT%20Class-Cloud%20Polling-green?style=flat-square)](https://developers.home-assistant.io/docs/architecture_index/#branding)
 [![GH-release](https://img.shields.io/github/v/release/Elwinmage/ha-aquamedic-component.svg?style=flat-square)](https://github.com/Elwinmage/ha-aquamedic-component/releases)
 [![Ruff Status](https://github.com/Elwinmage/ha-aquamedic-component/actions/workflows/main.yml/badge.svg)](https://github.com/Elwinmage/ha-aquamedic-component/actions/workflows/main.yml)
@@ -85,7 +85,7 @@ Les projets ReefTech s'articulent entre eux : les intégrations font entrer votr
   <tr>
     <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-blueprints/main/icon.png" width="64" alt="ha-reef-blueprints" /></td>
     <td>🐬<br /><a href="https://github.com/Elwinmage/ha-reef-blueprints"><b>ha-reef-blueprints</b></a></td>
-    <td>Blueprints de notification communs à tout l'écosystème : entretiens en retard trouvés via le contrat <code>reef_role</code>, et appareils devenus injoignables. Huit langues.</td>
+    <td>Blueprints d'automatisation communs à tout l'écosystème : entretiens en retard trouvés via le contrat <code>reef_role</code>, appareils devenus injoignables, test périodique des chauffages et surveillance des relais. Huit langues.</td>
     <td>les trois intégrations</td>
   </tr>
   <tr>
@@ -118,15 +118,18 @@ Tous ces appareils utilisent la plateforme IoT Gizwits (même backend que l'appl
 
 ## Installation
 
-### Via HACS
+### Via la Marketplace
 
-L'intégration est maintenant officiellement dans HACS. Cherchez simplement **Aqua Medic** dans l'onglet Intégrations et installez.
+L'intégration est dans le catalogue. Cherchez simplement **Aqua Medic** dans *Paramètres > Marketplace* et installez-la.
+
+> [!NOTE]
+> Depuis Home Assistant 2026.11, HACS fait partie de Home Assistant sous le nom de **Marketplace** (*Paramètres > Marketplace*) : rien à installer, et une installation HACS existante est migrée automatiquement. Sur un Home Assistant plus ancien, les mêmes étapes fonctionnent dans HACS.
 
 Ou utilisez le bouton d'installation directe :
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Elwinmage&repository=ha-aquamedic-component&category=integration)
 
-Puis redémarrez Home Assistant.
+Avec HACS sur un Home Assistant plus ancien, redémarrez ensuite Home Assistant.
 
 ---
 

@@ -4,7 +4,7 @@
   <img src="../../icon.png" width="50%"/>
 </p>
 
-[![HACS Badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/hacs)
+[![Marketplace Badge](https://img.shields.io/badge/Marketplace-Default-41BDF5.svg?style=flat-square)](https://github.com/hacs/default)
 [![IoT Class](https://img.shields.io/badge/IoT%20Class-Cloud%20Polling-green?style=flat-square)](https://developers.home-assistant.io/docs/architecture_index/#branding)
 [![GH-release](https://img.shields.io/github/v/release/Elwinmage/ha-aquamedic-component.svg?style=flat-square)](https://github.com/Elwinmage/ha-aquamedic-component/releases)
 [![Ruff Status](https://github.com/Elwinmage/ha-aquamedic-component/actions/workflows/main.yml/badge.svg)](https://github.com/Elwinmage/ha-aquamedic-component/actions/workflows/main.yml)
@@ -85,7 +85,7 @@ Die ReefTech-Projekte greifen ineinander: die Integrationen bringen Ihre Geräte
   <tr>
     <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-blueprints/main/icon.png" width="64" alt="ha-reef-blueprints" /></td>
     <td>🐬<br /><a href="https://github.com/Elwinmage/ha-reef-blueprints"><b>ha-reef-blueprints</b></a></td>
-    <td>Benachrichtigungs-Blueprints für das gesamte Ökosystem: überfällige Wartungen, über den <code>reef_role</code>-Vertrag gefunden, und nicht mehr erreichbare Geräte. Acht Sprachen.</td>
+    <td>Automatisierungs-Blueprints für das gesamte Ökosystem: überfällige Wartungen, über den <code>reef_role</code>-Vertrag gefunden, nicht mehr erreichbare Geräte, ein regelmäßiger Heizertest und eine Relaisüberwachung. Acht Sprachen.</td>
     <td>alle drei Integrationen</td>
   </tr>
   <tr>
@@ -118,15 +118,18 @@ Alle diese Geräte verwenden die Gizwits-IoT-Plattform (dasselbe Backend wie die
 
 ## Installation
 
-### Via HACS
+### Über den Marketplace
 
-Die Integration ist jetzt offiziell in HACS. Suchen Sie einfach **Aqua Medic** in der Registerkarte Integrationen und installieren Sie es.
+Die Integration ist im Katalog. Suchen Sie einfach **Aqua Medic** in *Einstellungen > Marketplace* und installieren Sie sie.
+
+> [!NOTE]
+> Seit Home Assistant 2026.11 ist HACS als **Marketplace** Teil von Home Assistant (*Einstellungen > Marketplace*): Es muss nichts installiert werden, und eine bestehende HACS-Installation wird automatisch migriert. Bei einem älteren Home Assistant funktionieren dieselben Schritte in HACS.
 
 Oder verwenden Sie die direkte Installationsschaltfläche:
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Elwinmage&repository=ha-aquamedic-component&category=integration)
 
-Starten Sie dann Home Assistant neu.
+Mit HACS auf einem älteren Home Assistant starten Sie Home Assistant danach neu.
 
 ---
 
@@ -242,6 +245,51 @@ Starten Sie dann Home Assistant neu.
 | **Aktualisieren** | Erzwingt eine sofortige Aktualisierung |
 
 > **Zum 0-10V-Steuermodus:** Jeder DC-Runner-Controller besitzt einen physischen 0-10V-Eingang für einen externen Aquariencomputer (Apex, GHL, …). Es ist ein Hardware-Anschluss, kein Cloud-Wert, und erscheint daher nicht als Geräteattribut — der Schalter *0-10V-Steuermodus* ist ein lokales Home-Assistant-Flag, das den Geschwindigkeitsregler deaktiviert, während die Pumpe extern gesteuert wird. Laut Aqua-Medic-Handbuch muss die Pumpe im 0-10V-Modus mit **≥ 60 %** laufen.
+
+---
+
+## Zeitfensterprogramm
+
+Jede Pumpe mit Zeitsteuerung (EcoDrift / SmartDrift und die DC-Runner-Serie) speichert ein Programm mit bis zu **48 Zeitfenstern**. Die Pumpe folgt ihm, solange ihr Schalter **Timer** eingeschaltet ist.
+
+#### Sensor
+
+| Entität | Beschreibung |
+|---|---|
+| **Schedule** | Anzahl der programmierten Zeitfenster. Das Programm selbst steht im Attribut `schedule`. |
+
+Jeder Eintrag von `schedule` beschreibt ein Zeitfenster, die Zeiten sind Minuten seit Mitternacht:
+
+```yaml
+- slot: 0
+  start: 480        # 08:00
+  end: 720          # 12:00
+  mode: auto        # DC Runner series: stop · auto · feeding
+  value: 60         # speed in %, or pause in minutes when feeding
+```
+
+Ein SmartDrift-Zeitfenster verwendet die Wellenmodi (`stop`, `classic_wave`, `sine_wave`, `random_wave`, `constant_flow`, `feeding`) und enthält außerdem `frequency` (%) und `tide` (`true` für Tide, `false` für Pulse).
+
+#### Dienst `aquamedic.set_schedule`
+
+Ersetzt das gesamte Programm einer oder mehrerer Pumpen. Zielen Sie auf den Sensor **Schedule** (`entity_id`) oder das Gerät (`device_id`).
+
+```yaml
+action: aquamedic.set_schedule
+data:
+  entity_id: sensor.skimmer_schedule
+  slots:
+    - { start: "08:00", end: "12:00", mode: auto, value: 60 }
+    - { start: "12:00", end: "12:15", mode: feeding, value: 10 }
+    - { start: "22:00", end: "23:59", mode: stop }
+```
+
+- `start` / `end` akzeptieren `"HH:MM"` oder Minuten seit Mitternacht; die Zeitfenster werden chronologisch gespeichert und jedes ungenutzte wird geleert, eine leere Liste löscht also das Programm.
+- Zeitfenster dürfen sich nicht überlappen und nicht über Mitternacht gehen (schreiben Sie ein Nachtfenster als zwei Zeitfenster).
+- Bei der DC-Runner-Serie muss ein laufendes Zeitfenster mindestens **30 %** betragen, wie der Geschwindigkeitsregler.
+- Nur die tatsächlich geänderten Zeitfenster werden an die Cloud gesendet.
+
+> Die Datenpunkte der Zeitfenster sind im Geräteschema dokumentiert, ihr Verhalten konnte aber nur mit dem lokalen Simulator geprüft werden: Kontrollieren Sie das erste geschriebene Programm in der Aqua-Medic-App.
 
 ---
 
