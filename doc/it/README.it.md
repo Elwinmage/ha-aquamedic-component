@@ -4,7 +4,7 @@
   <img src="../../icon.png" width="50%"/>
 </p>
 
-[![HACS Badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://github.com/hacs/hacs)
+[![Marketplace Badge](https://img.shields.io/badge/Marketplace-Default-41BDF5.svg?style=flat-square)](https://github.com/hacs/default)
 [![IoT Class](https://img.shields.io/badge/IoT%20Class-Cloud%20Polling-green?style=flat-square)](https://developers.home-assistant.io/docs/architecture_index/#branding)
 [![GH-release](https://img.shields.io/github/v/release/Elwinmage/ha-aquamedic-component.svg?style=flat-square)](https://github.com/Elwinmage/ha-aquamedic-component/releases)
 [![Ruff Status](https://github.com/Elwinmage/ha-aquamedic-component/actions/workflows/main.yml/badge.svg)](https://github.com/Elwinmage/ha-aquamedic-component/actions/workflows/main.yml)
@@ -36,6 +36,8 @@ Controlla le tue pompe Aqua Medic da Home Assistant tramite l'API cloud Gizwits.
 ## Progetti correlati
 
 I progetti ReefTech si incastrano tra loro: le integrazioni portano la tua attrezzatura in Home Assistant, la scheda la mostra e la pilota, e il backup la mantiene in funzione durante un blackout. Ognuno funziona anche da solo.
+
+<p align="center"><a href="https://elwinmage.github.io/reeftank/"><img src="https://raw.githubusercontent.com/Elwinmage/reeftank/main/assets/flower/ecosystem-flower.png" width="480" alt="ReefTech project ecosystem" /></a></p>
 
 <table>
   <tr>
@@ -83,7 +85,7 @@ I progetti ReefTech si incastrano tra loro: le integrazioni portano la tua attre
   <tr>
     <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-blueprints/main/icon.png" width="64" alt="ha-reef-blueprints" /></td>
     <td>🐬<br /><a href="https://github.com/Elwinmage/ha-reef-blueprints"><b>ha-reef-blueprints</b></a></td>
-    <td>Blueprint di notifica comuni a tutto l'ecosistema: manutenzioni scadute trovate tramite il contratto <code>reef_role</code>, e dispositivi diventati irraggiungibili. Otto lingue.</td>
+    <td>Blueprint di automazione comuni a tutto l'ecosistema: manutenzioni scadute trovate tramite il contratto <code>reef_role</code>, dispositivi diventati irraggiungibili, un test periodico dei riscaldatori e una sorveglianza dei relè. Otto lingue.</td>
     <td>tutte e tre le integrazioni</td>
   </tr>
   <tr>
@@ -116,15 +118,18 @@ Tutti questi dispositivi utilizzano la piattaforma IoT Gizwits (lo stesso backen
 
 ## Installazione
 
-### Tramite HACS
+### Tramite il Marketplace
 
-L'integrazione è ora ufficialmente in HACS. Basta cercare **Aqua Medic** nella scheda Integrazioni e installare.
+L'integrazione è nel catalogo. Cerca semplicemente **Aqua Medic** in *Impostazioni > Marketplace* e installala.
+
+> [!NOTE]
+> Da Home Assistant 2026.11, HACS fa parte di Home Assistant con il nome di **Marketplace** (*Impostazioni > Marketplace*): non c'è nulla da installare e un'installazione HACS esistente viene migrata automaticamente. Su un Home Assistant più vecchio, gli stessi passaggi funzionano in HACS.
 
 Oppure utilizza il pulsante di installazione diretta:
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Elwinmage&repository=ha-aquamedic-component&category=integration)
 
-Quindi riavviare Home Assistant.
+Con HACS su un Home Assistant più vecchio, riavvia poi Home Assistant.
 
 ---
 
@@ -240,6 +245,51 @@ Quindi riavviare Home Assistant.
 | **Aggiorna** | Forza un aggiornamento immediato |
 
 > **Informazioni sul controllo 0-10V:** ogni controller DC Runner ha un ingresso fisico 0-10V per un controller per acquario esterno (Apex, GHL, …). È una porta hardware, non un valore cloud, quindi non appare come attributo del dispositivo — l'interruttore *Modalità controllo 0-10V* è un flag locale di Home Assistant che disabilita il cursore di velocità mentre la pompa è controllata esternamente. Secondo il manuale Aqua Medic, in modalità 0-10V la pompa deve funzionare al **≥ 60 %**.
+
+---
+
+## Programma a fasce orarie
+
+Ogni pompa con programmatore (EcoDrift / SmartDrift e la serie DC Runner) memorizza un programma fino a **48 fasce**. La pompa lo segue finché il suo interruttore **Timer** è attivo.
+
+#### Sensore
+
+| Entità | Descrizione |
+|---|---|
+| **Schedule** | Numero di fasce programmate. Il programma stesso è nell'attributo `schedule`. |
+
+Ogni voce di `schedule` descrive una fascia, con gli orari in minuti dalla mezzanotte:
+
+```yaml
+- slot: 0
+  start: 480        # 08:00
+  end: 720          # 12:00
+  mode: auto        # DC Runner series: stop · auto · feeding
+  value: 60         # speed in %, or pause in minutes when feeding
+```
+
+Una fascia SmartDrift usa le modalità d'onda (`stop`, `classic_wave`, `sine_wave`, `random_wave`, `constant_flow`, `feeding`) e riporta anche `frequency` (%) e `tide` (`true` per marea, `false` per impulso).
+
+#### Servizio `aquamedic.set_schedule`
+
+Sostituisce l'intero programma di una o più pompe. Punta al sensore **Schedule** (`entity_id`) o al dispositivo (`device_id`).
+
+```yaml
+action: aquamedic.set_schedule
+data:
+  entity_id: sensor.skimmer_schedule
+  slots:
+    - { start: "08:00", end: "12:00", mode: auto, value: 60 }
+    - { start: "12:00", end: "12:15", mode: feeding, value: 10 }
+    - { start: "22:00", end: "23:59", mode: stop }
+```
+
+- `start` / `end` accettano `"HH:MM"` o minuti dalla mezzanotte; le fasce sono salvate in ordine cronologico e ogni fascia inutilizzata viene cancellata, quindi una lista vuota cancella il programma.
+- Le fasce non devono sovrapporsi né attraversare la mezzanotte (scrivi una fascia notturna come due fasce).
+- Sulla serie DC Runner una fascia in funzione deve essere al **30 % o più**, come il cursore della velocità.
+- Al cloud vengono inviate solo le fasce che cambiano davvero.
+
+> I datapoint delle fasce sono documentati nello schema del dispositivo, ma il loro comportamento è stato convalidato solo con il simulatore locale: controlla il primo programma scritto nell'app Aqua Medic.
 
 ---
 
