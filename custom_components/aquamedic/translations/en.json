@@ -64,12 +64,17 @@
       "init": {
         "title": "Aqua Medic — Options",
         "data": {
-          "scan_interval": "Refresh interval (seconds)"
+          "scan_interval": "Refresh interval (seconds)",
+          "local_hosts": "Pump addresses on the local network"
         },
         "data_description": {
-          "scan_interval": "How often the device state is polled (5–300 s)."
+          "scan_interval": "How often the device state is polled (5–300 s).",
+          "local_hosts": "IP address of each pump reachable on your network, separated by commas (optional). Reads and the main controls then go straight to the pump, and the cloud is used as a fallback."
         }
       }
+    },
+    "error": {
+      "invalid_host": "Invalid address. Use IP addresses or host names separated by commas."
     }
   },
   "entity": {
@@ -159,6 +164,15 @@
       },
       "maint_skimmer_needle_wheel_replace_notify": {
         "name": "Replace needle wheel and bearings (notifications)"
+      },
+      "doser_run": {
+        "name": "Channel {channel} dosing"
+      },
+      "doser_timer": {
+        "name": "Channel {channel} schedule"
+      },
+      "calibration": {
+        "name": "Calibration"
       }
     },
     "select": {
@@ -193,6 +207,16 @@
           "unknown": "Not set",
           "return": "Return pump",
           "skimmer": "Skimmer pump"
+        }
+      },
+      "calibration_channel": {
+        "name": "Calibration channel",
+        "state": {
+          "channel_1": "Channel 1",
+          "channel_2": "Channel 2",
+          "channel_3": "Channel 3",
+          "channel_4": "Channel 4",
+          "channel_5": "Channel 5"
         }
       }
     },
@@ -247,6 +271,12 @@
       },
       "maint_skimmer_needle_wheel_replace_interval_months": {
         "name": "Replace needle wheel and bearings (months)"
+      },
+      "doser_interval": {
+        "name": "Channel {channel} interval"
+      },
+      "calibration_amount": {
+        "name": "Calibration amount"
       }
     },
     "binary_sensor": {
@@ -270,12 +300,21 @@
       },
       "fault_uart": {
         "name": "UART communication fault"
+      },
+      "open_circuit": {
+        "name": "Open circuit"
       }
     },
     "sensor": {
       "schedule": {
         "name": "Schedule",
         "unit_of_measurement": "slots"
+      },
+      "doser_schedule": {
+        "name": "Channel {channel} dosing program"
+      },
+      "calibration_time": {
+        "name": "Calibration time"
       }
     }
   },
@@ -295,6 +334,20 @@
         "slots": {
           "name": "Slots",
           "description": "List of slots (48 at most), each with start and end (HH:MM or minutes since midnight), mode and value. An empty list clears the program. Slots must not overlap nor cross midnight."
+        }
+      }
+    },
+    "set_doser_schedule": {
+      "name": "Set dose schedule",
+      "description": "Replace the whole dose table of a Reefdoser channel. The pump only follows it while the channel schedule switch is on.",
+      "fields": {
+        "entity_id": {
+          "name": "Dose schedule sensor",
+          "description": "Dose schedule sensor(s) of the channel(s) to program."
+        },
+        "doses": {
+          "name": "Doses",
+          "description": "List of doses (24 at most), each with a time (HH:MM or minutes since midnight) and an amount_ml (whole ml). An empty list clears the program. Two doses cannot share the same minute."
         }
       }
     }

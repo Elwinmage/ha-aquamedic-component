@@ -45,9 +45,11 @@ def num_feed(coordinator):
 
 def test_flow_description():
     d = _get_desc("flow")
-    assert d.native_min_value == 0
+    # The pump clamps anything below 30 % (EcoDrift 4.3 / 8.3).
+    assert d.native_min_value == 30
     assert d.native_max_value == 100
     assert d.gated_by_0_10v is True
+    assert d.companion_attr == "Frequency"
 
 
 def test_frequency_description():
@@ -108,6 +110,23 @@ def test_flow_available_when_0_10v_off(coordinator, num_flow):
     assert num_flow.available is True
 
 
+@pytest.mark.parametrize("value", [1, True, "1", "true", "True"])
+def test_flow_unavailable_while_timer_is_on(coordinator, num_flow, value):
+    coordinator.data[MOCK_DID].attrs["TimerON"] = value
+    assert num_flow.available is False
+
+
+@pytest.mark.parametrize("value", [0, False, "0", "false", None])
+def test_flow_available_while_timer_is_off(coordinator, num_flow, value):
+    coordinator.data[MOCK_DID].attrs["TimerON"] = value
+    assert num_flow.available is True
+
+
+def test_frequency_available_while_timer_is_on(coordinator, num_freq):
+    coordinator.data[MOCK_DID].attrs["TimerON"] = 1
+    assert num_freq.available is True
+
+
 def test_frequency_available_even_with_0_10v(coordinator, num_freq):
     coordinator.set_control_0_10v(MOCK_DID, True)
     assert num_freq.available is True
@@ -116,8 +135,21 @@ def test_frequency_available_even_with_0_10v(coordinator, num_freq):
 # ── Control ───────────────────────────────────────────────────────────────────
 
 
-async def test_set_flow(num_flow, mock_client):
+async def test_set_flow_carries_the_current_frequency(num_flow, mock_client):
+    # The firmware ignores a flow-only write: the app sends the frequency too.
     await num_flow.async_set_native_value(80.0)
+    mock_client.control_device.assert_called_once_with(
+        MOCK_DID, {"Flow": 80, "Frequency": 50}
+    )
+
+
+async def test_set_flow_without_known_frequency(coordinator, mock_client):
+    attrs = {k: v for k, v in MOCK_LATEST["attr"].items() if k != "Frequency"}
+    coordinator.data[MOCK_DID] = AquaMedicDeviceData(
+        MOCK_DEVICE_ONLINE, {"attr": attrs}
+    )
+    num = AquaMedicNumberEntity(coordinator, MOCK_DID, _get_desc("flow"))
+    await num.async_set_native_value(80.0)
     mock_client.control_device.assert_called_once_with(MOCK_DID, {"Flow": 80})
 
 

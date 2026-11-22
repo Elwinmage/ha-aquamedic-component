@@ -117,6 +117,8 @@ Todos están documentados juntos en la [página del proyecto ReefTech](https://e
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | <img width="368" height="1024" alt="image" src="https://github.com/user-attachments/assets/3cc74acc-aab7-4bbf-a386-51155cf11943" /> | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
 | Aqua Medic DC Runner x.1 / x.2 / x.3 (bomba de retorno) | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
 | Aqua Medic DC Runner (bomba de espumador) | <img alt="espumador" src="doc/img/skimmer.png" width="200" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
+| Aqua Medic Reefdoser EVO 5 (bomba dosificadora de 5 canales) | <img alt="Reefdoser EVO 5" src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/doc/img/reefdoser_evo5.png" width="200" /> | `Reef_Doser5` | `0c50e51476964bc18bf8efd9a7b5fc87` | 🧪 |
+| Aqua Medic Reefdoser EVO 3 (bomba dosificadora de 3 canales) | <img alt="Reefdoser EVO 3" src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/doc/img/reefdoser_evo3.png" width="200" /> | — | — | 🧪 aún no probado en la EVO 3, contácteme |
 
 Todos estos dispositivos utilizan la plataforma IoT Gizwits (el mismo backend que la aplicación oficial Aqua Medic). La compatibilidad con dispositivos adicionales podrá añadirse en futuras versiones.
 
@@ -164,7 +166,7 @@ Con HACS en un Home Assistant más antiguo, reinicie Home Assistant después.
 
 | Entidad | Rango | Descripción |
 |---|---|---|
-| **Caudal** | 0–100 % | Caudal del motor (desactivado en modo 0-10V) |
+| **Caudal** | 30–100 % | Caudal del motor (desactivado en modo 0-10V, y mientras el programa esté activo: la bomba reescribe entonces el caudal según la franja en curso) |
 | **Frecuencia** | 0–100 % | Frecuencia de las olas |
 | **Duración de alimentación** | 1–60 min | Duración de la pausa de alimentación |
 
@@ -299,6 +301,55 @@ data:
 
 ---
 
+## Reefdoser EVO 5 (bomba dosificadora)
+
+> 🧪 Añadida a partir de la lista de datapoints y de una lectura de estado aportadas por un usuario de un equipo real (región cloud EU). Las entidades y el programa de dosificación siguen esa captura: avise de cualquier comportamiento distinto en su bomba.
+
+#### Entidades
+
+| Entidad | Descripción |
+|---|---|
+| **Alimentación** | Encendido/apagado general (apagado detiene toda dosificación) |
+| **Dosificación canal 1–5** | Ejecución manual de un canal |
+| **Programa canal 1–5** | Activa o desactiva el programa de dosificación de un canal (configuración) |
+| **Calibración** / **Canal de calibración** / **Cantidad de calibración** | Modo de calibración, canal calibrado (1–5) y cantidad (10–100) (configuración) |
+| **Intervalo canal 1–5** | `IntervalT<n>` (0–30). La unidad no está documentada, por lo que no se muestra ninguna (configuración) |
+| **Programa de dosificación canal 1–5** | Sensor: volumen dosificado al día, en ml. El programa está en el atributo `schedule` |
+| **Tiempo de calibración** | Tiempo de calibración indicado por la bomba, en segundos (diagnóstico) |
+| **Circuito abierto** / **Fallo de comunicación UART** | Alertas (diagnóstico) |
+| **Actualizar** | Fuerza una actualización inmediata |
+
+#### Programa de dosificación
+
+Cada canal guarda hasta **24 dosis**: la bomba dosifica la cantidad indicada una vez al día a la hora indicada mientras el interruptor de programa del canal esté activado. Cada entrada de `schedule` es una dosis; la hora en minutos desde medianoche y la cantidad en ml enteros:
+
+```yaml
+- slot: 0
+  time: 915        # 15:15
+  amount_ml: 2
+```
+
+#### Servicio `aquamedic.set_doser_schedule`
+
+Sustituye toda la tabla de dosis de uno o varios canales. Apunte al sensor **Programa de dosificación** del canal (`entity_id`).
+
+```yaml
+action: aquamedic.set_doser_schedule
+data:
+  entity_id: sensor.reefdoser_canal_1_programa_de_dosificacion
+  doses:
+    - { time: "08:00", amount_ml: 2 }
+    - { time: "20:00", amount_ml: 2 }
+```
+
+- `time` acepta `"HH:MM"` o minutos desde medianoche; las dosis se guardan en orden cronológico y las posiciones sin usar se borran, así que una lista vacía borra el programa.
+- Dos dosis no pueden coincidir en el mismo minuto y la cantidad es un número entero de ml (1–65535).
+- No se envía nada si la bomba ya contiene la tabla solicitada.
+
+> La integración solo habla con la nube de Gizwits. La bomba también responde en la red local (descubrimiento UDP 12414, TCP 12416), pero el acceso local aún no está implementado. La nube puede indicar que la bomba está sin conexión aunque sea accesible en local; las entidades quedan entonces no disponibles.
+
+---
+
 ## Con ha-reef-card
 
 [ha-reef-card](https://github.com/Elwinmage/ha-reef-card) muestra cada bomba en su panel: su velocidad sobre la imagen, los fallos que señala, el agua que mueve y su programa por tramos, que se edita desde la tarjeta (mediante `aquamedic.set_schedule`). Una DC Runner se muestra como bomba de retorno o como bomba de skimmer, según el rol declarado en la integración. Consulte la [página Aqua Medic](https://github.com/Elwinmage/ha-reef-card/blob/main/doc/es/aquamedic.es.md#aqua-medic) de la tarjeta.
@@ -353,6 +404,19 @@ Ir a **Configuración → Dispositivos y servicios → Añadir integración → 
 El servidor correcto se preselecciona automáticamente según el idioma de Home Assistant.
 
 Tras la configuración, el intervalo puede modificarse en **Configuración → Dispositivos y servicios → Aqua Medic → Configurar**.
+
+### Acceso por la red local (opcional)
+
+Las bombas también responden en su red local. Una vez indicada su dirección, las lecturas y los controles principales van directamente a la bomba en lugar de pasar por la nube: más rápido, y sigue funcionando cuando la nube va lenta o cae. Su cuenta de Aqua Medic sigue siendo necesaria: lista sus bombas y sirve de respaldo.
+
+1. Dé a cada bomba una dirección fija (una reserva DHCP en su router).
+2. Vaya a **Ajustes → Dispositivos y servicios → Aqua Medic → Configurar** e indique en **Direcciones de las bombas en la red local** la dirección IP de cada bomba, separadas por comas.
+
+- Controles enviados en local en las EcoDrift / SmartDrift: encendido, pulso y marea, alimentación, programa activado/desactivado, modo de oleaje, enlace, caudal, frecuencia y duración de la alimentación. Todo lo demás (franjas, dosificación) sigue pasando por la nube.
+- Las demás bombas también se leen en local, pero sus controles siguen en la nube.
+- Una bomba que no responde en local vuelve a leerse por la nube, y la integración regresa a la red local en cuanto responde.
+- Una bomba leída en local se muestra en línea aunque la nube la dé como desconectada.
+- Probado en una SmartDrift 11.1.
 
 ---
 

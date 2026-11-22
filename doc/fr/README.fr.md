@@ -117,6 +117,8 @@ Votre appareil n'est pas supporté ? Contactez-moi.
 | Aqua Medic EcoDrift / SmartDrift x.1 / x.3 | <img width="368" height="1024" alt="image" src="https://github.com/user-attachments/assets/3cc74acc-aab7-4bbf-a386-51155cf11943" /> | `Current_Pump` | `63632f4902094055ab3fd994c0d612fa` | ✅ |
 | Aqua Medic DC Runner x.1 / x.2 / x.3 (pompe de remontée) | <img width="368" height="441" alt="image" src="https://github.com/user-attachments/assets/99d5e986-a100-41b9-94dd-30b38d9b3661" /> | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
 | Aqua Medic DC Runner (pompe d'écumeur) | <img alt="écumeur" src="doc/img/skimmer.png" width="200" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
+| Aqua Medic Reefdoser EVO 5 (pompe doseuse 5 canaux) | <img alt="Reefdoser EVO 5" src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/doc/img/reefdoser_evo5.png" width="200" /> | `Reef_Doser5` | `0c50e51476964bc18bf8efd9a7b5fc87` | 🧪 |
+| Aqua Medic Reefdoser EVO 3 (pompe doseuse 3 canaux) | <img alt="Reefdoser EVO 3" src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/doc/img/reefdoser_evo3.png" width="200" /> | — | — | 🧪 pas encore testé sur l'EVO 3, me contacter |
 
 Tous ces appareils utilisent la plateforme IoT Gizwits (même backend que l'application officielle Aqua Medic). La prise en charge d'appareils supplémentaires pourra être ajoutée dans de futures versions.
 
@@ -164,7 +166,7 @@ Avec HACS sur un Home Assistant plus ancien, redémarrez ensuite Home Assistant.
 
 | Entité | Plage | Description |
 |---|---|---|
-| **Débit** | 0–100 % | Débit moteur (désactivé en mode 0-10V) |
+| **Débit** | 30–100 % | Débit moteur (désactivé en mode 0-10V, et tant que la programmation est active : la pompe réécrit alors le débit d'après le créneau en cours) |
 | **Fréquence** | 0–100 % | Fréquence des vagues |
 | **Durée de nourrissage** | 1–60 min | Durée de la pause de nourrissage |
 
@@ -299,6 +301,55 @@ data:
 
 ---
 
+## Reefdoser EVO 5 (pompe doseuse)
+
+> 🧪 Ajoutée d'après la liste des datapoints et une lecture d'état remontées par un utilisateur d'un appareil réel (région cloud EU). Les entités et le programme de dosage suivent cette capture : signalez tout comportement différent sur votre pompe.
+
+#### Entités
+
+| Entité | Description |
+|---|---|
+| **Alimentation** | Marche/arrêt général (l'arrêt stoppe tous les dosages) |
+| **Dosage canal 1–5** | Lancement manuel d'un canal |
+| **Programme canal 1–5** | Active ou désactive le programme de dosage d'un canal (configuration) |
+| **Calibration** / **Canal de calibration** / **Quantité de calibration** | Mode calibration, canal calibré (1–5) et quantité (10–100) (configuration) |
+| **Intervalle canal 1–5** | `IntervalT<n>` (0–30). L'unité n'est pas documentée, aucune n'est donc affichée (configuration) |
+| **Programme de dosage canal 1–5** | Capteur : volume dosé par jour, en ml. Le programme est dans l'attribut `schedule` |
+| **Durée de calibration** | Durée de calibration remontée par la pompe, en secondes (diagnostic) |
+| **Circuit ouvert** / **Défaut de communication UART** | Alertes (diagnostic) |
+| **Actualiser** | Force un rafraîchissement immédiat |
+
+#### Programme de dosage
+
+Chaque canal contient jusqu'à **24 doses** : la pompe dose la quantité indiquée une fois par jour à l'heure indiquée, tant que l'interrupteur de programme du canal est activé. Chaque entrée de `schedule` est une dose, l'heure étant en minutes depuis minuit et la quantité en ml entiers :
+
+```yaml
+- slot: 0
+  time: 915        # 15:15
+  amount_ml: 2
+```
+
+#### Service `aquamedic.set_doser_schedule`
+
+Remplace toute la table de doses d'un ou plusieurs canaux. Ciblez le capteur **Programme de dosage** du canal (`entity_id`).
+
+```yaml
+action: aquamedic.set_doser_schedule
+data:
+  entity_id: sensor.reefdoser_canal_1_programme_de_dosage
+  doses:
+    - { time: "08:00", amount_ml: 2 }
+    - { time: "20:00", amount_ml: 2 }
+```
+
+- `time` accepte `"HH:MM"` ou des minutes depuis minuit ; les doses sont rangées par ordre chronologique et les emplacements inutilisés effacés : une liste vide efface le programme.
+- Deux doses ne peuvent pas tomber la même minute, et la quantité est un nombre entier de ml (1–65535).
+- Rien n'est envoyé si la pompe contient déjà la table demandée.
+
+> L'intégration ne dialogue qu'avec le cloud Gizwits. La pompe répond aussi sur le réseau local (découverte UDP 12414, TCP 12416), mais l'accès local n'est pas encore implémenté. Le cloud peut déclarer la pompe hors ligne alors qu'elle est joignable en local ; les entités restent alors indisponibles.
+
+---
+
 ## Avec ha-reef-card
 
 [ha-reef-card](https://github.com/Elwinmage/ha-reef-card) affiche chaque pompe sur votre tableau de bord : sa vitesse sur l'image, les défauts qu'elle remonte, l'eau qu'elle déplace et son programme par créneaux, modifiable depuis la carte (via `aquamedic.set_schedule`). Une DC Runner est affichée en pompe de remontée ou en pompe d'écumeur, selon le rôle déclaré dans l'intégration. Voir la [page Aqua Medic](https://github.com/Elwinmage/ha-reef-card/blob/main/doc/fr/aquamedic.fr.md#aqua-medic) de la carte.
@@ -353,6 +404,19 @@ Aller dans **Paramètres → Appareils et services → Ajouter une intégration 
 Le serveur correct est présélectionné automatiquement en fonction de la langue de Home Assistant.
 
 Après configuration, l'intervalle d'actualisation peut être modifié via **Paramètres → Appareils et services → Aqua Medic → Configurer**.
+
+### Accès par le réseau local (facultatif)
+
+Les pompes répondent aussi sur votre réseau local. Une fois leur adresse renseignée, les lectures et les commandes principales vont directement à la pompe au lieu de passer par le cloud : plus rapide, et cela continue de marcher quand le cloud est lent ou en panne. Votre compte Aqua Medic reste nécessaire : il liste vos pompes et sert de secours.
+
+1. Donnez à chaque pompe une adresse fixe (une réservation DHCP dans votre box ou routeur).
+2. Allez dans **Paramètres → Appareils et services → Aqua Medic → Configurer** et renseignez **Adresses des pompes sur le réseau local** avec l'adresse IP de chaque pompe, séparées par des virgules.
+
+- Commandes envoyées en local sur les EcoDrift / SmartDrift : marche/arrêt, pulse et marée, nourrissage, programmation activée/désactivée, mode de vague, liaison, débit, fréquence et durée du nourrissage. Tout le reste (créneaux, dosage) passe toujours par le cloud.
+- Les autres pompes sont aussi lues en local, mais leurs commandes restent sur le cloud.
+- Une pompe qui ne répond pas en local est de nouveau lue par le cloud, et l'intégration revient au réseau local dès qu'elle répond.
+- Une pompe lue en local est affichée en ligne même si le cloud la dit hors ligne.
+- Testé sur une SmartDrift 11.1.
 
 ---
 

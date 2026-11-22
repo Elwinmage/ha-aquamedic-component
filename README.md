@@ -55,7 +55,7 @@ The ReefTech projects fit together: the integrations bring your equipment into H
   <tr>
     <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/icon.png" width="64" alt="ha-aquamedic-component" /></td>
     <td>🌊<br /><b>ha-aquamedic-component</b><br /><i>(this repository)</i></td>
-    <td>Aqua Medic pumps through the Gizwits cloud API: EcoDrift and SmartDrift wavemakers, DC Runner return and skimmer pumps.</td>
+    <td>Aqua Medic pumps through the Gizwits cloud API: EcoDrift and SmartDrift wavemakers, DC Runner return and skimmer pumps, Reefdoser EVO 5 dosing pump.</td>
     <td>ha-reef-card</td>
   </tr>
   <tr>
@@ -118,6 +118,8 @@ Your device is not supported? Please contact me.
 | Aqua Medic DC Runner series — return pump | <img alt="DC Runner" src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/doc/img/runner.png" width="200" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic DC Runner series — skimmer pump | <img alt="skimmer" src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/doc/img/skimmer.png" width="200" /> | `DC_Runner` | `00276aa006684c05805c297f60058c3d` | ✅ |
 | Aqua Medic DC Runner (legacy / speculative) | | `DC_Runner` | `8879684725d14066922374e50889f893` | 🧪 |
+| Aqua Medic Reefdoser EVO 5 (5-channel dosing pump) | <img alt="Reefdoser EVO 5" src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/doc/img/reefdoser_evo5.png" width="200" /> | `Reef_Doser5` | `0c50e51476964bc18bf8efd9a7b5fc87` | 🧪 |
+| Aqua Medic Reefdoser EVO 3 (3-channel dosing pump) | <img alt="Reefdoser EVO 3" src="https://raw.githubusercontent.com/Elwinmage/ha-aquamedic-component/main/doc/img/reefdoser_evo3.png" width="200" /> | — | — | 🧪 not tested yet on the EVO 3, please contact me |
 
 > The DC Runner **return pump** and **skimmer pump** share the same firmware and Gizwits product key. They expose an identical datapoint set (verified against two independent real-device captures) and are handled by the same code path — the two rows above are the same device with different pump heads. In Home Assistant they both appear as model *DC Runner*; use the device alias to distinguish which pump is which.
 >
@@ -169,7 +171,7 @@ With HACS on an older Home Assistant, restart Home Assistant afterwards.
 
 | Entity | Range | Description |
 |---|---|---|
-| **Flow rate** | 0–100 % | Motor flow (disabled in 0-10V mode) |
+| **Flow rate** | 30–100 % | Motor flow (disabled in 0-10V mode, and while the timer is on: the pump then rewrites the flow from the active time slot) |
 | **Frequency** | 0–100 % | Wave frequency |
 | **Feeding duration** | 1–60 min | Duration of feeding pause |
 
@@ -281,10 +283,61 @@ data:
 
 - `start` / `end` accept `"HH:MM"` or minutes since midnight; slots are stored in chronological order and every unused slot is cleared, so an empty list erases the program.
 - Slots must not overlap and must not cross midnight (write a night window as two slots).
-- On the DC Runner series a running slot must be at **30 % or more**, like the speed slider.
+- A running slot must be at **30 % or more** (DC Runner series and EcoDrift / SmartDrift): the pumps clamp anything lower, like the flow and speed sliders.
+- A slot from `00:00` to `00:00` is a whole-day program (the factory program of a pump), reported with `end: 1440`. `end: "24:00"` (or `1440`) is accepted for it, from `00:00` only.
+- Unused slots are cleared with `0xEE` filler bytes, like the Aqua Medic app does, never with zeros.
 - Only the slots that actually change are sent to the cloud.
 
 > The slot datapoints are documented by the device schema but their behaviour could only be validated against the local simulator: check the first program you write in the Aqua Medic app.
+
+---
+
+## Reefdoser EVO 5 (dosing pump)
+
+> 🧪 Added from the datapoint list and a status read reported by a user of a real unit (cloud region EU). Entities and the dose program follow that capture; please report anything that behaves differently on your pump.
+
+#### Entities
+
+| Entity | Description |
+|---|---|
+| **Power** | Main on/off (off stops all dosing) |
+| **Channel 1–5 dosing** | Manual run of a channel |
+| **Channel 1–5 schedule** | Turns the dose program of a channel on or off (configuration) |
+| **Calibration** / **Calibration channel** / **Calibration amount** | Calibration mode, channel being calibrated (1–5) and amount (10–100) (configuration) |
+| **Channel 1–5 interval** | `IntervalT<n>` (0–30). The unit is not documented, so none is shown (configuration) |
+| **Channel 1–5 dosing program** | Sensor: volume dosed per day, in ml. The program is in the `schedule` attribute |
+| **Calibration time** | Calibration time reported by the pump, in seconds (diagnostic) |
+| **Open circuit** / **UART communication fault** | Alerts (diagnostic) |
+| **Refresh** | Forces an immediate data refresh |
+
+#### Dose program
+
+Each channel holds up to **24 doses**: the pump doses the given amount once a day at the given time while the channel schedule switch is on. Each entry of `schedule` is one dose, times being minutes since midnight and amounts whole millilitres:
+
+```yaml
+- slot: 0
+  time: 915        # 15:15
+  amount_ml: 2
+```
+
+#### Service `aquamedic.set_doser_schedule`
+
+Replaces the whole dose table of one or several channels. Target the **dosing program** sensor of the channel (`entity_id`).
+
+```yaml
+action: aquamedic.set_doser_schedule
+data:
+  entity_id: sensor.reefdoser_channel_1_dosing_program
+  doses:
+    - { time: "08:00", amount_ml: 2 }
+    - { time: "20:00", amount_ml: 2 }
+```
+
+- `time` accepts `"HH:MM"` or minutes since midnight; doses are stored in chronological order and unused slots are cleared, so an empty list erases the program.
+- Two doses cannot share the same minute, and the amount is a whole number of ml (1–65535).
+- Nothing is sent when the pump already holds the requested table.
+
+> The integration talks to the Gizwits cloud only. The pump also answers on the local network (UDP 12414 discovery, TCP 12416), but local access is not implemented yet. The cloud may report the pump as offline while it is reachable locally; the entities then stay unavailable.
 
 ---
 
@@ -342,6 +395,19 @@ Go to **Settings → Devices & Services → Add Integration → Aqua Medic**.
 The correct server is pre-selected automatically based on your Home Assistant language.
 
 After setup, options (refresh interval) can be changed via **Settings → Devices & Services → Aqua Medic → Configure**.
+
+### Local network access (optional)
+
+The pumps also answer on your local network. Once you give their address, readings and the main controls go straight to the pump instead of through the cloud: faster, and they keep working when the cloud is slow or down. Your Aqua Medic account is still needed: it lists your pumps and serves as a fallback.
+
+1. Give each pump a fixed address (a DHCP reservation in your router).
+2. Go to **Settings → Devices & Services → Aqua Medic → Configure** and fill **Pump addresses on the local network** with the IP address of each pump, separated by commas.
+
+- Controls sent locally on the EcoDrift / SmartDrift: power, pulse and tide, feeding, timer on/off, wave mode, linkage, flow, frequency and feeding duration. Everything else (time slots, dosing) still goes through the cloud.
+- Other pumps are read locally too, but their controls stay on the cloud.
+- A pump that does not answer locally is read through the cloud again, and the integration goes back to the local network as soon as it answers.
+- A pump read locally is shown online even when the cloud reports it offline.
+- Tested on a SmartDrift 11.1.
 
 ---
 

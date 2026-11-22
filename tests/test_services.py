@@ -33,7 +33,7 @@ DRIFT_SLOTS = [{"start": "08:00", "end": "12:30", "mode": "sine_wave", "value": 
 
 
 def _blank(slot_len: int) -> dict[str, str]:
-    return {slot_attr(i): "00" * slot_len for i in range(SLOT_COUNT)}
+    return {slot_attr(i): "ee" * slot_len for i in range(SLOT_COUNT)}
 
 
 @pytest.fixture

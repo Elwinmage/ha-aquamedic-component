@@ -64,12 +64,17 @@
       "init": {
         "title": "Aqua Medic — Optionen",
         "data": {
-          "scan_interval": "Aktualisierungsintervall (Sekunden)"
+          "scan_interval": "Aktualisierungsintervall (Sekunden)",
+          "local_hosts": "Pumpenadressen im lokalen Netzwerk"
         },
         "data_description": {
-          "scan_interval": "Wie oft der Gerätestatus abgefragt wird (5–300 s)."
+          "scan_interval": "Wie oft der Gerätestatus abgefragt wird (5–300 s).",
+          "local_hosts": "IP-Adresse jeder Pumpe, die in Ihrem Netzwerk erreichbar ist, durch Kommas getrennt (optional). Lesen und die wichtigsten Steuerbefehle gehen dann direkt an die Pumpe, die Cloud dient als Ausweichlösung."
         }
       }
+    },
+    "error": {
+      "invalid_host": "Ungültige Adresse. Verwenden Sie IP-Adressen oder Hostnamen, durch Kommas getrennt."
     }
   },
   "entity": {
@@ -159,6 +164,15 @@
       },
       "maint_skimmer_needle_wheel_replace_notify": {
         "name": "Nadelrad und Lager ersetzen (Benachrichtigungen)"
+      },
+      "doser_run": {
+        "name": "Kanal {channel} Dosierung"
+      },
+      "doser_timer": {
+        "name": "Kanal {channel} Zeitplan"
+      },
+      "calibration": {
+        "name": "Kalibrierung"
       }
     },
     "select": {
@@ -193,6 +207,16 @@
           "unknown": "Nicht festgelegt",
           "return": "Rückförderpumpe",
           "skimmer": "Abschäumerpumpe"
+        }
+      },
+      "calibration_channel": {
+        "name": "Kalibrierkanal",
+        "state": {
+          "channel_1": "Kanal 1",
+          "channel_2": "Kanal 2",
+          "channel_3": "Kanal 3",
+          "channel_4": "Kanal 4",
+          "channel_5": "Kanal 5"
         }
       }
     },
@@ -247,6 +271,12 @@
       },
       "maint_skimmer_needle_wheel_replace_interval_months": {
         "name": "Nadelrad und Lager ersetzen (Monate)"
+      },
+      "doser_interval": {
+        "name": "Kanal {channel} Intervall"
+      },
+      "calibration_amount": {
+        "name": "Kalibriermenge"
       }
     },
     "binary_sensor": {
@@ -270,12 +300,21 @@
       },
       "fault_uart": {
         "name": "UART-Kommunikationsfehler"
+      },
+      "open_circuit": {
+        "name": "Offener Stromkreis"
       }
     },
     "sensor": {
       "schedule": {
         "name": "Zeitplan",
         "unit_of_measurement": "Zeitfenster"
+      },
+      "doser_schedule": {
+        "name": "Kanal {channel} Dosierprogramm"
+      },
+      "calibration_time": {
+        "name": "Kalibrierzeit"
       }
     }
   },
@@ -295,6 +334,20 @@
         "slots": {
           "name": "Zeitfenster",
           "description": "Liste der Zeitfenster (höchstens 48), jeweils mit start und end (HH:MM oder Minuten seit Mitternacht), mode und value. Eine leere Liste löscht das Programm. Zeitfenster dürfen sich weder überschneiden noch über Mitternacht reichen."
+        }
+      }
+    },
+    "set_doser_schedule": {
+      "name": "Dosierplan setzen",
+      "description": "Ersetzt die gesamte Dosiertabelle eines Reefdoser-Kanals. Die Pumpe folgt ihr nur, solange der Zeitplan-Schalter des Kanals eingeschaltet ist.",
+      "fields": {
+        "entity_id": {
+          "name": "Dosierplan-Sensor",
+          "description": "Dosierplan-Sensor(en) der zu programmierenden Kanäle."
+        },
+        "doses": {
+          "name": "Dosierungen",
+          "description": "Liste der Dosierungen (höchstens 24), jeweils mit time (HH:MM oder Minuten seit Mitternacht) und amount_ml (ganze ml). Eine leere Liste löscht das Programm. Zwei Dosierungen dürfen nicht in derselben Minute liegen."
         }
       }
     }

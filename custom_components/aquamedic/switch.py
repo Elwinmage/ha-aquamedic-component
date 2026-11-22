@@ -24,6 +24,7 @@ from .const import (
     SMARTDRIFT_PRODUCT_KEY,
 )
 from .coordinator import AquaMedicCoordinator
+from .doser import CHANNEL_COUNT, channel_count, channels_of, run_attr, timer_attr
 from .entity import (
     AquaMedicEntity,
     AquaMedicMaintenanceEntity,
@@ -154,6 +155,57 @@ DC_SKIMMER_SWITCH_DESCRIPTIONS: tuple[AquaMedicSwitchDescription, ...] = (
 )
 
 
+# Reefdoser EVO 5: main on/off (off stops all dosing), calibration mode, then
+# per channel a manual run and the schedule on/off. The channel number is a
+# translation placeholder so one translation key serves the five channels.
+def reefdoser_switch_descriptions(
+    channels: int,
+) -> tuple[AquaMedicSwitchDescription, ...]:
+    """Switches of a dosing pump with *channels* channels."""
+    return (
+        AquaMedicSwitchDescription(
+            key="power",
+            translation_key="power",
+            attr="switch",
+            icon="mdi:power",
+            icon_off="mdi:power-off",
+        ),
+        AquaMedicSwitchDescription(
+            key="calibration",
+            translation_key="calibration",
+            attr="CALSW",
+            icon="mdi:ruler",
+            entity_category=EntityCategory.CONFIG,
+        ),
+        *(
+            AquaMedicSwitchDescription(
+                key=f"doser_run_{channel}",
+                translation_key="doser_run",
+                translation_placeholders={"channel": str(channel)},
+                attr=run_attr(channel),
+                icon="mdi:eyedropper-variant",
+                icon_off="mdi:eyedropper",
+            )
+            for channel in channels_of(channels)
+        ),
+        *(
+            AquaMedicSwitchDescription(
+                key=f"doser_timer_{channel}",
+                translation_key="doser_timer",
+                translation_placeholders={"channel": str(channel)},
+                attr=timer_attr(channel),
+                icon="mdi:timer",
+                icon_off="mdi:timer-off",
+                entity_category=EntityCategory.CONFIG,
+            )
+            for channel in channels_of(channels)
+        ),
+    )
+
+
+REEFDOSER_SWITCH_DESCRIPTIONS = reefdoser_switch_descriptions(CHANNEL_COUNT)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -168,6 +220,8 @@ async def async_setup_entry(
             descs = DC_RUNNER_SWITCH_DESCRIPTIONS
         elif dev.product_key == DC_SKIMMER_PRODUCT_KEY:
             descs = DC_SKIMMER_SWITCH_DESCRIPTIONS
+        elif channels := channel_count(dev.product_key, dev.attrs):
+            descs = reefdoser_switch_descriptions(channels)
         else:
             continue
         for desc in descs:

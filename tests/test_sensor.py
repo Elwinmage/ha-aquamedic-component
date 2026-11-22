@@ -27,7 +27,7 @@ RUNNER_DID = "runner-did"
 
 
 def _blank(slot_len: int) -> dict[str, str]:
-    return {slot_attr(i): "00" * slot_len for i in range(SLOT_COUNT)}
+    return {slot_attr(i): "ee" * slot_len for i in range(SLOT_COUNT)}
 
 
 def _set_attrs(coordinator, attrs: dict) -> None:
@@ -121,7 +121,7 @@ def test_state_counts_programmed_slots(coordinator):
     assert [s["mode"] for s in extra["schedule"]] == ["sine_wave", "constant_flow"]
     assert extra["kind"] == "drift"
     assert extra["max_slots"] == SLOT_COUNT
-    assert extra["min_value"] == 0
+    assert extra["min_value"] == 30
     assert extra["timer_on"] is True
     assert "feeding" in extra["modes"]
 

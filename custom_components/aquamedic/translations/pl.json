@@ -10,6 +10,24 @@
       "not_implemented": "Not implemented yet."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aqua Medic — Opcje",
+        "data": {
+          "scan_interval": "Interwał odświeżania (sekundy)",
+          "local_hosts": "Adresy pomp w sieci lokalnej"
+        },
+        "data_description": {
+          "scan_interval": "Jak często odpytywany jest stan urządzeń (5–300 s).",
+          "local_hosts": "Adres IP każdej pompy dostępnej w Twojej sieci, oddzielone przecinkami (opcjonalnie). Odczyty i najważniejsze polecenia trafiają wtedy bezpośrednio do pompy, a chmura służy jako zapas."
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Nieprawidłowy adres. Użyj adresów IP lub nazw hostów oddzielonych przecinkami."
+    }
+  },
   "entity": {
     "button": {
       "refresh": {
@@ -97,6 +115,15 @@
       },
       "maint_skimmer_needle_wheel_replace_notify": {
         "name": "Wymień wirnik igiełkowy i łożyska (powiadomienia)"
+      },
+      "doser_run": {
+        "name": "Dozowanie kanał {channel}"
+      },
+      "doser_timer": {
+        "name": "Harmonogram kanał {channel}"
+      },
+      "calibration": {
+        "name": "Kalibracja"
       }
     },
     "select": {
@@ -131,6 +158,16 @@
           "unknown": "Nieokreślona",
           "return": "Pompa obiegowa",
           "skimmer": "Pompa odpieniacza"
+        }
+      },
+      "calibration_channel": {
+        "name": "Kanał kalibracji",
+        "state": {
+          "channel_1": "Kanał 1",
+          "channel_2": "Kanał 2",
+          "channel_3": "Kanał 3",
+          "channel_4": "Kanał 4",
+          "channel_5": "Kanał 5"
         }
       }
     },
@@ -185,6 +222,12 @@
       },
       "maint_skimmer_needle_wheel_replace_interval_months": {
         "name": "Wymień wirnik igiełkowy i łożyska (miesiące)"
+      },
+      "doser_interval": {
+        "name": "Interwał kanał {channel}"
+      },
+      "calibration_amount": {
+        "name": "Ilość kalibracji"
       }
     },
     "binary_sensor": {
@@ -208,12 +251,21 @@
       },
       "fault_uart": {
         "name": "UART communication fault"
+      },
+      "open_circuit": {
+        "name": "Obwód otwarty"
       }
     },
     "sensor": {
       "schedule": {
         "name": "Harmonogram",
         "unit_of_measurement": "przedziały"
+      },
+      "doser_schedule": {
+        "name": "Program dozowania kanał {channel}"
+      },
+      "calibration_time": {
+        "name": "Czas kalibracji"
       }
     }
   },
@@ -233,6 +285,20 @@
         "slots": {
           "name": "Przedziały",
           "description": "Lista przedziałów (maksymalnie 48), każdy z start i end (HH:MM lub minuty od północy), mode i value. Pusta lista usuwa program. Przedziały nie mogą się nakładać ani przechodzić przez północ."
+        }
+      }
+    },
+    "set_doser_schedule": {
+      "name": "Ustaw harmonogram dozowania",
+      "description": "Zastępuje całą tabelę dawek kanału Reefdoser. Pompa realizuje ją tylko wtedy, gdy przełącznik harmonogramu kanału jest włączony.",
+      "fields": {
+        "entity_id": {
+          "name": "Czujnik harmonogramu dozowania",
+          "description": "Czujnik(i) harmonogramu dozowania programowanych kanałów."
+        },
+        "doses": {
+          "name": "Dawki",
+          "description": "Lista dawek (maksymalnie 24), każda z time (HH:MM lub minuty od północy) i amount_ml (pełne ml). Pusta lista czyści program. Dwie dawki nie mogą przypadać na tę samą minutę."
         }
       }
     }

@@ -113,8 +113,10 @@ def test_decode_accepts_every_wire_shape(raw):
         RUNNER_SLOT_HEX + "00",  # too long for a 6-byte slot
         ["a", "b", "c", "d", "e", "f"],  # not byte values
         42,  # unsupported type
-        "000000000000",  # blank slot
-        "08000800013c",  # start == end → unused
+        "000000000000",  # blank slot, as older versions of the integration wrote it
+        "eeeeeeeeeeee",  # blank slot, as the app writes it
+        "ee000c1e013c",  # the first byte alone marks the filler
+        "08000800013c",  # zero-length window that is not 00:00 → skipped
     ],
 )
 def test_decode_returns_none_for_unusable_values(raw):
@@ -195,24 +197,31 @@ def test_normalize_drift_adds_frequency_and_tide():
                 "start": 0,
                 "end": 60,
                 "mode": "sine_wave",
-                "value": 10,
+                "value": 30,
                 "frequency": 30,
                 "tide": 1,
             },
-            {"start": 60, "end": 120, "mode": "constant_flow", "value": 0},
+            {"start": 60, "end": 120, "mode": "constant_flow", "value": 30},
         ],
         LAYOUT_DRIFT,
     )
     assert slots[0]["frequency"] == 30 and slots[0]["tide"] is True
-    # A SmartDrift has no minimum flow, and frequency / tide default to off.
+    # Frequency and tide default to off.
     assert slots[1] == {
         "start": 60,
         "end": 120,
         "mode": "constant_flow",
-        "value": 0,
+        "value": 30,
         "frequency": 0,
         "tide": False,
     }
+
+
+def test_drift_flow_below_the_pump_minimum_is_refused():
+    with pytest.raises(ScheduleError, match="outside 30-100"):
+        normalize_slots(
+            [{"start": 0, "end": 60, "mode": "sine_wave", "value": 10}], LAYOUT_DRIFT
+        )
 
 
 @pytest.mark.parametrize(
@@ -265,8 +274,9 @@ def test_encode_roundtrip_drift():
 
 
 def test_encode_blank_slot_is_padded_to_the_datapoint_length():
-    assert encode_slot(None, LAYOUT_RUNNER) == "00" * 6
-    assert encode_slot(None, LAYOUT_DRIFT) == "00" * 8
+    # 0xEE like the app, never zeros: 00:00-00:00 is a whole-day program.
+    assert encode_slot(None, LAYOUT_RUNNER) == "ee" * 6
+    assert encode_slot(None, LAYOUT_DRIFT) == "ee" * 8
 
 
 def test_payload_rewrites_every_slot_when_nothing_is_known():
@@ -276,11 +286,11 @@ def test_payload_rewrites_every_slot_when_nothing_is_known():
     )
     assert len(payload) == SLOT_COUNT
     assert payload["AutoTime00"] == RUNNER_SLOT_HEX
-    assert payload["AutoTime01"] == "00" * 6
+    assert payload["AutoTime01"] == "ee" * 6
 
 
 def test_payload_only_carries_changed_slots():
-    current = {slot_attr(i): "00" * 6 for i in range(SLOT_COUNT)}
+    current = {slot_attr(i): "ee" * 6 for i in range(SLOT_COUNT)}
     current[slot_attr(0)] = RUNNER_SLOT_HEX
     current[slot_attr(1)] = "140016000250"
     # Same first slot, second one removed.
@@ -289,12 +299,45 @@ def test_payload_only_carries_changed_slots():
         LAYOUT_RUNNER,
         current,
     )
-    assert payload == {"AutoTime01": "00" * 6}
+    assert payload == {"AutoTime01": "ee" * 6}
 
 
 def test_payload_empty_when_program_is_unchanged():
-    current = {slot_attr(i): "00" * 6 for i in range(SLOT_COUNT)}
+    current = {slot_attr(i): "ee" * 6 for i in range(SLOT_COUNT)}
     assert build_control_payload([], LAYOUT_RUNNER, current) == {}
+
+
+def test_payload_replaces_the_zero_slots_older_versions_wrote():
+    # A zero slot is read as unused but is rewritten with the filler, so a pump
+    # that reads 00:00-00:00 as a whole-day window is cleaned up.
+    current = {slot_attr(i): "00" * 6 for i in range(SLOT_COUNT)}
+    payload = build_control_payload([], LAYOUT_RUNNER, current)
+    assert payload == {slot_attr(i): "ee" * 6 for i in range(SLOT_COUNT)}
+
+
+def test_whole_day_slot_is_not_an_empty_one():
+    # The factory program of an EcoDrift: 00:00-00:00 classic wave, 100 / 95.
+    slot = decode_slot("0000000001645f00", LAYOUT_DRIFT, 0)
+    assert slot == {
+        "slot": 0,
+        "start": 0,
+        "end": 1440,
+        "mode": "classic_wave",
+        "value": 100,
+        "frequency": 95,
+        "tide": False,
+    }
+    # ...and it can be sent back as read.
+    assert encode_slot(slot, LAYOUT_DRIFT) == "0000000001645f00"
+    assert normalize_slots([slot], LAYOUT_DRIFT)[0]["end"] == 1440
+
+
+@pytest.mark.parametrize("end", [1440, "24:00"])
+def test_end_of_day_is_accepted_from_midnight_only(end):
+    ok = normalize_slots([{"start": 0, "end": end, "value": 50}], LAYOUT_RUNNER)
+    assert ok[0]["end"] == 1440
+    with pytest.raises(ScheduleError, match="24:00 is only accepted from 00:00"):
+        normalize_slots([{"start": 60, "end": end, "value": 50}], LAYOUT_RUNNER)
 
 
 def test_payload_propagates_validation_errors():

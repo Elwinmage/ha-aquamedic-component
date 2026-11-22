@@ -15,8 +15,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .compat import BinarySensorDeviceClass
-from .const import DC_SKIMMER_PRODUCT_KEY, DOMAIN, SMARTDRIFT_PRODUCT_KEY
+from .const import (
+    DC_SKIMMER_PRODUCT_KEY,
+    DOMAIN,
+    SMARTDRIFT_PRODUCT_KEY,
+)
 from .coordinator import AquaMedicCoordinator
+from .doser import channel_count
 from .entity import AquaMedicEntity, ReefRoleMixin
 
 _LOGGER = logging.getLogger(__name__)
@@ -86,6 +91,21 @@ FAULT_DESCRIPTIONS: tuple[AquaMedicFaultDescription, ...] = (
     ),
 )
 
+# Reefdoser EVO 5 raises two alerts: an open circuit (dosing motor wiring) and
+# a communication fault between the Wi-Fi module and the main board. The UART
+# one shares its description with the pumps, hence the same translation key.
+REEFDOSER_FAULT_DESCRIPTIONS: tuple[AquaMedicFaultDescription, ...] = (
+    AquaMedicFaultDescription(
+        key="open_circuit",
+        translation_key="open_circuit",
+        attr="OpenCircuit",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:flash-triangle-outline",
+    ),
+    next(d for d in FAULT_DESCRIPTIONS if d.key == "fault_uart"),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -95,12 +115,13 @@ async def async_setup_entry(
     coordinator: AquaMedicCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[BinarySensorEntity] = []
     for did, dev in (coordinator.data or {}).items():
-        if (
-            dev.product_key != SMARTDRIFT_PRODUCT_KEY
-            and dev.product_key != DC_SKIMMER_PRODUCT_KEY
-        ):
+        if channel_count(dev.product_key, dev.attrs):
+            descs = REEFDOSER_FAULT_DESCRIPTIONS
+        elif dev.product_key in (SMARTDRIFT_PRODUCT_KEY, DC_SKIMMER_PRODUCT_KEY):
+            descs = FAULT_DESCRIPTIONS
+        else:
             continue
-        for desc in FAULT_DESCRIPTIONS:
+        for desc in descs:
             entities.append(AquaMedicFaultEntity(coordinator, did, desc))
     async_add_entities(entities)
 

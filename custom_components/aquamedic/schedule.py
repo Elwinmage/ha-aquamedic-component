@@ -22,6 +22,12 @@ SmartDrift / EcoDrift — 8 bytes per slot::
     Byte6 frequency    in %
     Byte7 pulse/tide   0 pulse, 1 tide
 
+An unused slot is filled with ``0xEE`` bytes (seen on real pumps). A slot from
+00:00 to 00:00 is a program covering the whole day, not an empty one: the
+factory program of a pump is exactly that. Slots are therefore blanked with
+``0xEE`` when written, never with zeros, which a pump could read as a
+whole-day "stop" window.
+
 This module is pure (no Home Assistant import) so the wire format can be
 tested on its own. Times are exchanged as minutes since midnight, the same
 convention as the schedules of ha-reefbeat-component, which lets ha-reef-card
@@ -54,6 +60,9 @@ MINUTES_PER_DAY: Final[int] = 24 * 60
 # The device stores an end time as hour/minute: 23:59 is the last one that is
 # unambiguous on every firmware (24:00 is not guaranteed to be accepted).
 MAX_MINUTE: Final[int] = MINUTES_PER_DAY - 1
+
+# Filler byte of an unused slot, as written by the app and seen on real pumps.
+EMPTY_BYTE: Final[int] = 0xEE
 
 KIND_RUNNER: Final[str] = "runner"
 KIND_DRIFT: Final[str] = "drift"
@@ -104,6 +113,8 @@ LAYOUT_DRIFT: Final[ScheduleLayout] = ScheduleLayout(
         "constant_flow",
         MODE_FEEDING,
     ),
+    # The pump clamps a lower flow to 30 % (EcoDrift 4.3 / 8.3).
+    min_value=30,
     has_frequency=True,
 )
 
@@ -163,17 +174,21 @@ def _to_bytes(raw: Any, length: int) -> bytes | None:
 def decode_slot(raw: Any, layout: ScheduleLayout, index: int) -> dict[str, Any] | None:
     """Decode one ``AutoTimeNN`` value.
 
-    Returns None for an unused slot. A slot is unused when it is blank or
-    when its start and end are equal: the firmware has no "enabled" flag, an
-    empty window is how the app clears a slot.
+    Returns None for an unused slot: one filled with ``0xEE`` (how the app
+    clears a slot) or with zeros (how older versions of this integration
+    cleared it). A slot from 00:00 to 00:00 is a whole-day program and is
+    reported as ending at 24:00 (1440). Any other slot whose start equals its
+    end is a zero-length window and is skipped.
     """
     data = _to_bytes(raw, layout.slot_len)
-    if data is None:
+    if data is None or data[0] == EMPTY_BYTE or not any(data):
         return None
     start = data[0] * 60 + data[1]
     end = data[2] * 60 + data[3]
     if start == end:
-        return None
+        if start != 0:
+            return None
+        end = MINUTES_PER_DAY
     mode_idx = data[4]
     mode = layout.modes[mode_idx] if mode_idx < len(layout.modes) else MODE_STOP
     slot: dict[str, Any] = {
@@ -244,6 +259,13 @@ def _bounded_int(value: Any, field: str, low: int, high: int) -> int:
     return number
 
 
+def _parse_end(value: Any, field: str) -> int:
+    """Read the end of a slot: a time of day, or 24:00 / 1440 for end of day."""
+    if value in (MINUTES_PER_DAY, "24:00", "24:00:00"):
+        return MINUTES_PER_DAY
+    return parse_minutes(value, field)
+
+
 def normalize_slots(slots: list[dict[str, Any]], layout: ScheduleLayout) -> list[dict]:
     """Validate user slots and return them sorted, ready to encode.
 
@@ -261,7 +283,13 @@ def normalize_slots(slots: list[dict[str, Any]], layout: ScheduleLayout) -> list
             raise ScheduleError(f"slot {pos}: not a mapping")
         where = f"slot {pos}"
         start = parse_minutes(raw.get("start"), f"{where} start")
-        end = parse_minutes(raw.get("end"), f"{where} end")
+        end = _parse_end(raw.get("end"), f"{where} end")
+        if end == MINUTES_PER_DAY and start != 0:
+            # The wire format only has 00:00 for "end of day", which is
+            # read as a whole-day program when the slot starts at 00:00.
+            raise ScheduleError(
+                f"{where}: 24:00 is only accepted from 00:00 (use 23:59 instead)"
+            )
         if end <= start:
             raise ScheduleError(
                 f"{where}: end must be after start (split a slot crossing midnight)"
@@ -316,17 +344,19 @@ def format_minutes(minutes: int) -> str:
 def encode_slot(slot: dict[str, Any] | None, layout: ScheduleLayout) -> str:
     """Encode one normalized slot as the hex string the Open API expects.
 
-    None encodes a blank (unused) slot.
+    None encodes a blank (unused) slot, filled with ``0xEE`` like the app does.
     """
+    if slot is None:
+        return bytes([EMPTY_BYTE] * layout.slot_len).hex()
     data = bytearray(layout.slot_len)
-    if slot is not None:
-        data[0], data[1] = divmod(slot["start"], 60)
-        data[2], data[3] = divmod(slot["end"], 60)
-        data[4] = layout.modes.index(slot["mode"])
-        data[5] = slot["value"]
-        if layout.has_frequency:
-            data[6] = slot["frequency"]
-            data[7] = 1 if slot["tide"] else 0
+    data[0], data[1] = divmod(slot["start"], 60)
+    # 24:00 is written as 00:00, the firmware's "whole day" (see decode_slot).
+    data[2], data[3] = divmod(slot["end"] % MINUTES_PER_DAY, 60)
+    data[4] = layout.modes.index(slot["mode"])
+    data[5] = slot["value"]
+    if layout.has_frequency:
+        data[6] = slot["frequency"]
+        data[7] = 1 if slot["tide"] else 0
     return data.hex()
 
 

@@ -11,8 +11,13 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DC_SKIMMER_PRODUCT_KEY, DOMAIN, SMARTDRIFT_PRODUCT_KEY
+from .const import (
+    DC_SKIMMER_PRODUCT_KEY,
+    DOMAIN,
+    SMARTDRIFT_PRODUCT_KEY,
+)
 from .coordinator import AquaMedicCoordinator
+from .doser import CHANNEL_COUNT, channel_count, channels_of
 from .entity import AquaMedicEntity, ReefRoleMixin
 from .maintenance import (
     PUMP_ROLE_OPTIONS,
@@ -94,6 +99,33 @@ DC_SKIMMER_SELECT_DESCRIPTIONS: tuple[AquaMedicSelectDescription, ...] = (
 )
 
 
+# Reefdoser EVO 5 CALSet: the channel being calibrated, a 3-bit enum on the
+# wire. Index 0 is channel 1 (the datapoint document lists the labels
+# "校准1" to "校准5" in that order), so a plain number is an index, never a
+# channel number; the labels are accepted too in case the cloud answers with
+# the enum label rather than its index.
+def reefdoser_select_descriptions(
+    channels: int,
+) -> tuple[AquaMedicSelectDescription, ...]:
+    """Selects of a dosing pump with *channels* channels."""
+    options = [f"channel_{n}" for n in channels_of(channels)]
+    return (
+        AquaMedicSelectDescription(
+            key="calibration_channel",
+            translation_key="calibration_channel",
+            attr="CALSet",
+            options=options,
+            options_list=options,
+            raw_map={f"校准{n}": f"channel_{n}" for n in channels_of(channels)},
+            icon="mdi:numeric",
+            entity_category=EntityCategory.CONFIG,
+        ),
+    )
+
+
+REEFDOSER_SELECT_DESCRIPTIONS = reefdoser_select_descriptions(CHANNEL_COUNT)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -106,6 +138,8 @@ async def async_setup_entry(
             descs: tuple[AquaMedicSelectDescription, ...] = SELECT_DESCRIPTIONS
         elif dev.product_key == DC_SKIMMER_PRODUCT_KEY:
             descs = DC_SKIMMER_SELECT_DESCRIPTIONS
+        elif channels := channel_count(dev.product_key, dev.attrs):
+            descs = reefdoser_select_descriptions(channels)
         else:
             # No `continue`: the legacy DC Runner product key exposes no
             # Gizwits select but still needs its pump role select below.

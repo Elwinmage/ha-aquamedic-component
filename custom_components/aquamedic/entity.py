@@ -10,8 +10,14 @@ from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DC_RUNNER_PRODUCT_KEY, DC_RUNNER_SERIES_PRODUCT_KEY, DOMAIN
+from .const import (
+    DC_RUNNER_PRODUCT_KEY,
+    DC_RUNNER_SERIES_PRODUCT_KEY,
+    DOMAIN,
+    REEFDOSER_EVO5_PRODUCT_KEY,
+)
 from .coordinator import AquaMedicCoordinator, AquaMedicDeviceData
+from .doser import channel_count
 from .maintenance import (
     PUMP_ROLE_UNKNOWN,
     MaintenanceStore,
@@ -28,7 +34,7 @@ _DC_RUNNER_MODEL_PRODUCT_KEYS = frozenset(
 )
 
 
-def resolve_model(product_key: str | None) -> str:
+def resolve_model(product_key: str | None, channels: int = 0) -> str:
     """Return the HA-visible model label for a given Gizwits product key.
 
     Shared by AquaMedicEntity and AquaMedicLocalSwitchEntity (which cannot
@@ -36,6 +42,11 @@ def resolve_model(product_key: str | None) -> str:
     """
     if product_key in _DC_RUNNER_MODEL_PRODUCT_KEYS:
         return "DC Runner"
+    if product_key == REEFDOSER_EVO5_PRODUCT_KEY:
+        return "Reefdoser EVO 5"
+    if channels:
+        # A dosing pump of another model: the name follows the channel count.
+        return f"Reefdoser EVO {channels}"
     return "SmartDrift"
 
 
@@ -83,7 +94,9 @@ def build_device_info(coordinator: Any, did: str) -> DeviceInfo:
         identifiers={(DOMAIN, did)},
         name=dev.name if dev else did,
         manufacturer="Aqua Medic",
-        model=resolve_model(product_key),
+        model=resolve_model(
+            product_key, channel_count(product_key, dev.attrs if dev else None)
+        ),
         model_id=resolve_model_id(product_key, role),
     )
 

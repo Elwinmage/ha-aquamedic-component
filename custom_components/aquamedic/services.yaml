@@ -20,3 +20,19 @@ set_schedule:
       example: '[{"start": "08:00", "end": "12:00", "mode": "auto", "value": 60}]'
       selector:
         object:
+
+set_doser_schedule:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          multiple: true
+          filter:
+            integration: aquamedic
+            domain: sensor
+    doses:
+      required: true
+      example: '[{"time": "15:15", "amount_ml": 2}, {"time": "21:00", "amount_ml": 2}]'
+      selector:
+        object:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall, callback
@@ -15,15 +16,18 @@ from .client import AquaMedicAuthError, AquaMedicConnectionError
 from .compat import vol
 from .const import DOMAIN
 from .coordinator import AquaMedicCoordinator
+from .doser import build_control_payload as build_doser_payload
 from .schedule import ScheduleError, build_control_payload, layout_for
 
 _LOGGER = logging.getLogger(__name__)
 
 SERVICE_SET_SCHEDULE = "set_schedule"
+SERVICE_SET_DOSER_SCHEDULE = "set_doser_schedule"
 
 ATTR_ENTITY_ID = "entity_id"
 ATTR_DEVICE_ID = "device_id"
 ATTR_SLOTS = "slots"
+ATTR_DOSES = "doses"
 
 # Suffix of the schedule sensor unique_id ("<did>_schedule", see sensor.py).
 _SCHEDULE_UNIQUE_SUFFIX = "_schedule"
@@ -40,6 +44,26 @@ _SLOT_SCHEMA = vol.Schema(
     # The schedule attribute carries a "slot" index: accept it back untouched
     # so a program read from the sensor can be sent as is.
     extra=vol.REMOVE_EXTRA,
+)
+
+# Unique_id of a dose-schedule sensor: "<did>_doser_schedule_<channel>".
+_DOSER_UNIQUE_RE = re.compile(r"^(?P<did>.+)_doser_schedule_(?P<channel>[1-5])$")
+
+_DOSE_SCHEMA = vol.Schema(
+    {
+        vol.Required("time"): vol.Any(int, cv.string),
+        vol.Required("amount_ml"): vol.Coerce(int),
+    },
+    # The schedule attribute carries a "slot" index: accept it back untouched
+    # so a program read from the sensor can be sent as is.
+    extra=vol.REMOVE_EXTRA,
+)
+
+SET_DOSER_SCHEDULE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+        vol.Required(ATTR_DOSES): vol.All(cv.ensure_list, [_DOSE_SCHEMA]),
+    }
 )
 
 SET_SCHEDULE_SCHEMA = vol.Schema(
@@ -145,6 +169,47 @@ async def _async_set_schedule(hass: HomeAssistant, call: ServiceCall) -> None:
         _LOGGER.debug("Schedule written to %s (%d slot(s) changed)", did, len(payload))
 
 
+async def _async_set_doser_schedule(hass: HomeAssistant, call: ServiceCall) -> None:
+    """Replace the whole dose table of one or several Reefdoser channels."""
+    doses: list[dict[str, Any]] = call.data[ATTR_DOSES]
+
+    # Validate every target before sending anything, as set_schedule does.
+    jobs: list[tuple[AquaMedicCoordinator, str, dict[str, str]]] = []
+    ent_reg = er.async_get(hass)
+    for entity_id in call.data[ATTR_ENTITY_ID]:
+        entry = ent_reg.async_get(entity_id)
+        match = (
+            _DOSER_UNIQUE_RE.match(entry.unique_id)
+            if entry is not None and entry.platform == DOMAIN
+            else None
+        )
+        if entry is None or match is None:
+            raise ServiceValidationError(
+                f"{entity_id} is not an Aqua Medic dose schedule sensor"
+            )
+        did, channel = match["did"], int(match["channel"])
+        entry_ids = {entry.config_entry_id} if entry.config_entry_id else None
+        coordinator, did = _find_device(hass, did, entry_ids)
+        dev = coordinator.data[did]
+        try:
+            payload = build_doser_payload(channel, doses, dev.attrs)
+        except ScheduleError as exc:
+            raise ServiceValidationError(f"{dev.name}: {exc}") from exc
+        jobs.append((coordinator, did, payload))
+
+    for coordinator, did, payload in jobs:
+        if not payload:
+            _LOGGER.debug("Dose schedule of %s already up to date", did)
+            continue
+        try:
+            await coordinator.async_control(did, payload)
+        except (AquaMedicAuthError, AquaMedicConnectionError) as exc:
+            raise HomeAssistantError(
+                f"Could not write the dose schedule of {did}: {exc}"
+            ) from exc
+        _LOGGER.debug("Dose schedule written to %s (%s)", did, ", ".join(payload))
+
+
 @callback
 def async_register_services(hass: HomeAssistant) -> None:
     """Register the integration services (idempotent)."""
@@ -154,16 +219,26 @@ def async_register_services(hass: HomeAssistant) -> None:
     async def _handle_set_schedule(call: ServiceCall) -> None:
         await _async_set_schedule(hass, call)
 
+    async def _handle_set_doser_schedule(call: ServiceCall) -> None:
+        await _async_set_doser_schedule(hass, call)
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_SCHEDULE,
         _handle_set_schedule,
         schema=SET_SCHEDULE_SCHEMA,
     )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_DOSER_SCHEDULE,
+        _handle_set_doser_schedule,
+        schema=SET_DOSER_SCHEDULE_SCHEMA,
+    )
 
 
 @callback
 def async_unregister_services(hass: HomeAssistant) -> None:
     """Remove the integration services once no config entry is left."""
-    if hass.services.has_service(DOMAIN, SERVICE_SET_SCHEDULE):
-        hass.services.async_remove(DOMAIN, SERVICE_SET_SCHEDULE)
+    for service in (SERVICE_SET_SCHEDULE, SERVICE_SET_DOSER_SCHEDULE):
+        if hass.services.has_service(DOMAIN, service):
+            hass.services.async_remove(DOMAIN, service)

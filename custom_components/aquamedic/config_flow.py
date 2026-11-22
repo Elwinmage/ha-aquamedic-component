@@ -6,13 +6,15 @@ Steps:
   sim_host → (only when region == "sim") simulator host URL
 
 Options flow:
-  init  → scan_interval
+  init  → scan_interval + addresses of pumps reachable on the local network
 """
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import pathlib
+import re
 from typing import Any
 
 from homeassistant import config_entries
@@ -38,6 +40,7 @@ from .const import (
     CONF_ACCESS_TOKEN,
     CONF_API_MODE,
     CONF_DEVICE_LIST_API,
+    CONF_LOCAL_HOSTS,
     CONF_PASSWORD,
     CONF_REFRESH_TOKEN,
     CONF_REGION,
@@ -67,6 +70,31 @@ _SIM_FLAG = pathlib.Path(__file__).parent / ".simulator_enabled"
 def _simulator_enabled() -> bool:
     """Return True if the local .simulator_enabled flag file exists."""
     return _SIM_FLAG.exists()
+
+
+_HOSTNAME = re.compile(
+    r"^(?=.{1,253}$)[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$"
+)
+
+
+def parse_local_hosts(text: str) -> list[str] | None:
+    """Addresses typed in the options form, or None if one is not valid.
+
+    Separated by commas, semicolons, spaces or line breaks; duplicates are
+    dropped and the order is kept. An empty text means no local access.
+    """
+    hosts: list[str] = []
+    for item in re.split(r"[,;\s]+", text.strip()):
+        if not item:
+            continue
+        try:
+            ipaddress.ip_address(item)
+        except ValueError:
+            if not _HOSTNAME.match(item):
+                return None
+        if item not in hosts:
+            hosts.append(item)
+    return hosts
 
 
 def _default_region(hass_language: str) -> str:
@@ -499,7 +527,7 @@ class AquaMedicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class AquaMedicOptionsFlow(config_entries.OptionsFlow):
-    """Handle Aqua Medic options (scan interval only)."""
+    """Handle Aqua Medic options: refresh interval and local network access."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._config_entry = config_entry
@@ -507,14 +535,24 @@ class AquaMedicOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
+        errors: dict[str, str] = {}
+        current_hosts = ", ".join(self._config_entry.data.get(CONF_LOCAL_HOSTS, []))
         if user_input is not None:
-            new_data = dict(self._config_entry.data)
-            new_data[CONF_SCAN_INTERVAL] = int(user_input[CONF_SCAN_INTERVAL])
-            self.hass.config_entries.async_update_entry(
-                self._config_entry, data=new_data
-            )
-            self.hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
-            return self.async_create_entry(data=new_data)
+            hosts = parse_local_hosts(user_input.get(CONF_LOCAL_HOSTS, ""))
+            if hosts is None:
+                errors[CONF_LOCAL_HOSTS] = "invalid_host"
+                current_hosts = user_input.get(CONF_LOCAL_HOSTS, "")
+            else:
+                new_data = dict(self._config_entry.data)
+                new_data[CONF_SCAN_INTERVAL] = int(user_input[CONF_SCAN_INTERVAL])
+                new_data[CONF_LOCAL_HOSTS] = hosts
+                self.hass.config_entries.async_update_entry(
+                    self._config_entry, data=new_data
+                )
+                self.hass.config_entries.async_schedule_reload(
+                    self._config_entry.entry_id
+                )
+                return self.async_create_entry(data=new_data)
 
         current_interval = self._config_entry.data.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
@@ -527,6 +565,10 @@ class AquaMedicOptionsFlow(config_entries.OptionsFlow):
                     vol.Required(
                         CONF_SCAN_INTERVAL, default=current_interval
                     ): _interval_selector(),
+                    vol.Optional(CONF_LOCAL_HOSTS, default=current_hosts): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.TEXT)
+                    ),
                 }
             ),
+            errors=errors,
         )

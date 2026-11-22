@@ -33,6 +33,7 @@ CONF_ACCESS_TOKEN = "access_token"
 CONF_REFRESH_TOKEN = "refresh_token"
 CONF_TOKEN_EXPIRED_AT = "token_expired_at"
 CONF_TOKEN_CREATED_AT = "token_created_at"
+CONF_LOCAL_HOSTS = "local_hosts"  # optional: addresses of pumps reachable on the LAN
 CONF_API_MODE = "api_mode"
 CONF_DEVICE_LIST_API = "device_list_api"
 
@@ -190,3 +191,9 @@ DC_SKIMMER_PRODUCT_KEY = DC_RUNNER_SERIES_PRODUCT_KEY
 # Kept in place because a few accounts may still advertise it and we want them
 # to land on a valid code path rather than falling through the setup.
 DC_RUNNER_PRODUCT_KEY = "8879684725d14066922374e50889f893"
+
+# Reefdoser EVO 5 — 5-channel dosing pump (Gizwits product "Reef_Doser5").
+# Datapoints reported by a user from a real unit (29 datapoints, packet
+# version 0x00000004). Unlike the pumps above it exposes no 48-slot scheduler:
+# each channel owns a 24-slot dose table (see doser.py).
+REEFDOSER_EVO5_PRODUCT_KEY = "0c50e51476964bc18bf8efd9a7b5fc87"

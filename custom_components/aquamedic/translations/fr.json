@@ -64,12 +64,17 @@
       "init": {
         "title": "Aqua Medic — Options",
         "data": {
-          "scan_interval": "Intervalle de rafraîchissement (secondes)"
+          "scan_interval": "Intervalle de rafraîchissement (secondes)",
+          "local_hosts": "Adresses des pompes sur le réseau local"
         },
         "data_description": {
-          "scan_interval": "Fréquence de mise à jour de l'état des appareils (5–300 s)."
+          "scan_interval": "Fréquence de mise à jour de l'état des appareils (5–300 s).",
+          "local_hosts": "Adresse IP de chaque pompe joignable sur votre réseau, séparées par des virgules (facultatif). Les lectures et les commandes principales vont alors directement à la pompe, le cloud servant de secours."
         }
       }
+    },
+    "error": {
+      "invalid_host": "Adresse invalide. Utilisez des adresses IP ou des noms d'hôte séparés par des virgules."
     }
   },
   "entity": {
@@ -159,6 +164,15 @@
       },
       "maint_skimmer_needle_wheel_replace_notify": {
         "name": "Remplacer le rotor à aiguilles et les roulements (notifications)"
+      },
+      "doser_run": {
+        "name": "Dosage canal {channel}"
+      },
+      "doser_timer": {
+        "name": "Programme canal {channel}"
+      },
+      "calibration": {
+        "name": "Calibration"
       }
     },
     "select": {
@@ -193,6 +207,16 @@
           "unknown": "Non défini",
           "return": "Pompe de remontée",
           "skimmer": "Pompe d'écumeur"
+        }
+      },
+      "calibration_channel": {
+        "name": "Canal de calibration",
+        "state": {
+          "channel_1": "Canal 1",
+          "channel_2": "Canal 2",
+          "channel_3": "Canal 3",
+          "channel_4": "Canal 4",
+          "channel_5": "Canal 5"
         }
       }
     },
@@ -247,6 +271,12 @@
       },
       "maint_skimmer_needle_wheel_replace_interval_months": {
         "name": "Remplacer le rotor à aiguilles et les roulements (mois)"
+      },
+      "doser_interval": {
+        "name": "Intervalle canal {channel}"
+      },
+      "calibration_amount": {
+        "name": "Quantité de calibration"
       }
     },
     "binary_sensor": {
@@ -270,12 +300,21 @@
       },
       "fault_uart": {
         "name": "Défaut communication UART"
+      },
+      "open_circuit": {
+        "name": "Circuit ouvert"
       }
     },
     "sensor": {
       "schedule": {
         "name": "Programmation",
         "unit_of_measurement": "créneaux"
+      },
+      "doser_schedule": {
+        "name": "Programme de dosage canal {channel}"
+      },
+      "calibration_time": {
+        "name": "Durée de calibration"
       }
     }
   },
@@ -295,6 +334,20 @@
         "slots": {
           "name": "Créneaux",
           "description": "Liste de créneaux (48 au maximum), chacun avec start et end (HH:MM ou minutes depuis minuit), mode et value. Une liste vide efface le programme. Les créneaux ne doivent ni se chevaucher ni passer minuit."
+        }
+      }
+    },
+    "set_doser_schedule": {
+      "name": "Définir le programme de dosage",
+      "description": "Remplace toute la table de doses d'un canal de la Reefdoser. La pompe ne la suit que si l'interrupteur de programme du canal est activé.",
+      "fields": {
+        "entity_id": {
+          "name": "Capteur de programme de dosage",
+          "description": "Capteur(s) de programme de dosage du ou des canaux à programmer."
+        },
+        "doses": {
+          "name": "Doses",
+          "description": "Liste des doses (24 au plus), chacune avec une heure (HH:MM ou minutes depuis minuit) et amount_ml (ml entiers). Une liste vide efface le programme. Deux doses ne peuvent pas avoir la même minute."
         }
       }
     }

@@ -24,16 +24,32 @@ from .const import (
     SMARTDRIFT_PRODUCT_KEY,
 )
 from .coordinator import AquaMedicCoordinator
+from .doser import CHANNEL_COUNT, channel_count, channels_of, interval_attr
 from .entity import AquaMedicEntity, AquaMedicMaintenanceEntity
 from .maintenance import MaintenanceTask, get_store, tasks_for_device
 
 _LOGGER = logging.getLogger(__name__)
 
 
+def _is_on(value: object) -> bool:
+    """A Gizwits boolean, which the cloud may answer as 0/1 or true/false."""
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true")
+    return bool(value)
+
+
 @dataclass(frozen=True, kw_only=True)
 class AquaMedicNumberDescription(NumberEntityDescription):
     attr: str = ""
     gated_by_0_10v: bool = False
+    # The EcoDrift / SmartDrift firmware rewrites the flow from the active
+    # time slot within seconds while its timer is on, so a manual flow is
+    # only possible with TimerON off (confirmed on a SmartDrift 11.1).
+    gated_by_timer: bool = False
+    # Attribute sent together with this one, with its current value. The
+    # EcoDrift / SmartDrift firmware ignores a write that changes only the
+    # flow; the app always sends the frequency along with it.
+    companion_attr: str = ""
 
 
 NUMBER_DESCRIPTIONS: tuple[AquaMedicNumberDescription, ...] = (
@@ -41,13 +57,16 @@ NUMBER_DESCRIPTIONS: tuple[AquaMedicNumberDescription, ...] = (
         key="flow",
         translation_key="flow",
         attr="Flow",
-        native_min_value=0,
+        # The pump clamps anything lower to 30 % (EcoDrift 4.3 / 8.3).
+        native_min_value=30,
         native_max_value=100,
         native_step=1,
         native_unit_of_measurement="%",
         icon="mdi:water-percent",
         mode=NumberMode.SLIDER,
         gated_by_0_10v=True,
+        gated_by_timer=True,
+        companion_attr="Frequency",
     ),
     AquaMedicNumberDescription(
         key="frequency",
@@ -150,6 +169,46 @@ DC_SKIMMER_NUMBER_DESCRIPTIONS: tuple[AquaMedicNumberDescription, ...] = (
 )
 
 
+# Reefdoser EVO 5. IntervalT<n> is shown by the app as a plain number (0-30,
+# 0 or 3 on the unit it was captured from): its unit is not documented, so
+# none is declared. Calib1 is the calibration amount (10-100).
+def reefdoser_number_descriptions(
+    channels: int,
+) -> tuple[AquaMedicNumberDescription, ...]:
+    """Numbers of a dosing pump with *channels* channels."""
+    return (
+        *(
+            AquaMedicNumberDescription(
+                key=f"doser_interval_{channel}",
+                translation_key="doser_interval",
+                translation_placeholders={"channel": str(channel)},
+                attr=interval_attr(channel),
+                native_min_value=0,
+                native_max_value=30,
+                native_step=1,
+                icon="mdi:timer-cog-outline",
+                mode=NumberMode.BOX,
+                entity_category=EntityCategory.CONFIG,
+            )
+            for channel in channels_of(channels)
+        ),
+        AquaMedicNumberDescription(
+            key="calibration_amount",
+            translation_key="calibration_amount",
+            attr="Calib1",
+            native_min_value=10,
+            native_max_value=100,
+            native_step=1,
+            icon="mdi:ruler",
+            mode=NumberMode.BOX,
+            entity_category=EntityCategory.CONFIG,
+        ),
+    )
+
+
+REEFDOSER_NUMBER_DESCRIPTIONS = reefdoser_number_descriptions(CHANNEL_COUNT)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -164,6 +223,8 @@ async def async_setup_entry(
             descs = DC_RUNNER_NUMBER_DESCRIPTIONS
         elif dev.product_key == DC_SKIMMER_PRODUCT_KEY:
             descs = DC_SKIMMER_NUMBER_DESCRIPTIONS
+        elif channels := channel_count(dev.product_key, dev.attrs):
+            descs = reefdoser_number_descriptions(channels)
         else:
             continue
         for desc in descs:
@@ -178,7 +239,8 @@ async def async_setup_entry(
 class AquaMedicNumberEntity(AquaMedicEntity, NumberEntity):  # type: ignore[misc]
     """Numeric entity backed by a Gizwits uint8 attribute.
 
-    Flow becomes unavailable when the 0-10V switch is ON.
+    Flow becomes unavailable when the 0-10V switch is ON, or while the pump
+    timer is on (the timer overwrites a manual flow).
     """
 
     def __init__(
@@ -198,9 +260,9 @@ class AquaMedicNumberEntity(AquaMedicEntity, NumberEntity):  # type: ignore[misc
             self.coordinator.last_update_success and dev is not None and dev.is_online
         ):
             return False
-        return not (
-            self._desc.gated_by_0_10v and self.coordinator.get_control_0_10v(self._did)
-        )
+        if self._desc.gated_by_0_10v and self.coordinator.get_control_0_10v(self._did):
+            return False
+        return not (self._desc.gated_by_timer and _is_on(dev.get("TimerON")))
 
     @property
     def native_value(self) -> float | None:  # type: ignore[reportIncompatibleVariableOverride]
@@ -208,7 +270,13 @@ class AquaMedicNumberEntity(AquaMedicEntity, NumberEntity):  # type: ignore[misc
         return float(val) if val is not None else None
 
     async def async_set_native_value(self, value: float) -> None:
-        await self.coordinator.async_control(self._did, {self._desc.attr: int(value)})
+        payload = {self._desc.attr: int(value)}
+        companion = self._desc.companion_attr
+        if companion:
+            current = self._gizwits_value(companion)
+            if current is not None:
+                payload[companion] = int(current)
+        await self.coordinator.async_control(self._did, payload)
 
 
 class AquaMedicMaintenanceIntervalNumber(AquaMedicMaintenanceEntity, NumberEntity):  # type: ignore[misc]

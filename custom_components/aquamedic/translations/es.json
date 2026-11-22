@@ -33,6 +33,24 @@
       "entry_not_found": "Entrada de integración no encontrada."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aqua Medic — Opciones",
+        "data": {
+          "scan_interval": "Intervalo de actualización (segundos)",
+          "local_hosts": "Direcciones de las bombas en la red local"
+        },
+        "data_description": {
+          "scan_interval": "Con qué frecuencia se consulta el estado de los dispositivos (5–300 s).",
+          "local_hosts": "Dirección IP de cada bomba accesible en su red, separadas por comas (opcional). Las lecturas y los controles principales van entonces directamente a la bomba, y la nube sirve de respaldo."
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Dirección no válida. Use direcciones IP o nombres de host separados por comas."
+    }
+  },
   "entity": {
     "button": {
       "refresh": {
@@ -120,6 +138,15 @@
       },
       "maint_skimmer_needle_wheel_replace_notify": {
         "name": "Sustituir el rotor de agujas y los rodamientos (notificaciones)"
+      },
+      "doser_run": {
+        "name": "Dosificación canal {channel}"
+      },
+      "doser_timer": {
+        "name": "Programa canal {channel}"
+      },
+      "calibration": {
+        "name": "Calibración"
       }
     },
     "select": {
@@ -154,6 +181,16 @@
           "unknown": "Sin definir",
           "return": "Bomba de retorno",
           "skimmer": "Bomba de skimmer"
+        }
+      },
+      "calibration_channel": {
+        "name": "Canal de calibración",
+        "state": {
+          "channel_1": "Canal 1",
+          "channel_2": "Canal 2",
+          "channel_3": "Canal 3",
+          "channel_4": "Canal 4",
+          "channel_5": "Canal 5"
         }
       }
     },
@@ -208,6 +245,12 @@
       },
       "maint_skimmer_needle_wheel_replace_interval_months": {
         "name": "Sustituir el rotor de agujas y los rodamientos (meses)"
+      },
+      "doser_interval": {
+        "name": "Intervalo canal {channel}"
+      },
+      "calibration_amount": {
+        "name": "Cantidad de calibración"
       }
     },
     "binary_sensor": {
@@ -231,12 +274,21 @@
       },
       "fault_uart": {
         "name": "UART communication fault"
+      },
+      "open_circuit": {
+        "name": "Circuito abierto"
       }
     },
     "sensor": {
       "schedule": {
         "name": "Programación",
         "unit_of_measurement": "franjas"
+      },
+      "doser_schedule": {
+        "name": "Programa de dosificación canal {channel}"
+      },
+      "calibration_time": {
+        "name": "Tiempo de calibración"
       }
     }
   },
@@ -256,6 +308,20 @@
         "slots": {
           "name": "Franjas",
           "description": "Lista de franjas (48 como máximo), cada una con start y end (HH:MM o minutos desde medianoche), mode y value. Una lista vacía borra el programa. Las franjas no deben solaparse ni cruzar la medianoche."
+        }
+      }
+    },
+    "set_doser_schedule": {
+      "name": "Definir programa de dosificación",
+      "description": "Sustituye toda la tabla de dosis de un canal de la Reefdoser. La bomba solo la sigue mientras el interruptor de programa del canal esté activado.",
+      "fields": {
+        "entity_id": {
+          "name": "Sensor de programa de dosificación",
+          "description": "Sensor(es) de programa de dosificación de los canales a programar."
+        },
+        "doses": {
+          "name": "Dosis",
+          "description": "Lista de dosis (24 como máximo), cada una con time (HH:MM o minutos desde medianoche) y amount_ml (ml enteros). Una lista vacía borra el programa. Dos dosis no pueden coincidir en el mismo minuto."
         }
       }
     }

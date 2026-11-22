@@ -17,6 +17,7 @@ from .const import (
     CONF_ACCESS_TOKEN,
     CONF_API_MODE,
     CONF_DEVICE_LIST_API,
+    CONF_LOCAL_HOSTS,
     CONF_PASSWORD,
     CONF_REFRESH_TOKEN,
     CONF_REGION,
@@ -163,7 +164,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     coordinator = AquaMedicCoordinator(
-        hass, client, scan_interval=interval, entry_id=entry.entry_id
+        hass,
+        client,
+        scan_interval=interval,
+        entry_id=entry.entry_id,
+        local_hosts=entry.data.get(CONF_LOCAL_HOSTS, []),
     )
 
     # Maintenance state must be loaded before the platforms are forwarded:

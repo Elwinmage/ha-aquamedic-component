@@ -33,6 +33,24 @@
       "entry_not_found": "Voce di integrazione non trovata."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aqua Medic — Opzioni",
+        "data": {
+          "scan_interval": "Intervallo di aggiornamento (secondi)",
+          "local_hosts": "Indirizzi delle pompe nella rete locale"
+        },
+        "data_description": {
+          "scan_interval": "Ogni quanto viene letto lo stato dei dispositivi (5–300 s).",
+          "local_hosts": "Indirizzo IP di ogni pompa raggiungibile nella rete, separati da virgole (facoltativo). Letture e comandi principali vanno allora direttamente alla pompa, e il cloud fa da riserva."
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Indirizzo non valido. Usa indirizzi IP o nomi host separati da virgole."
+    }
+  },
   "entity": {
     "button": {
       "refresh": {
@@ -120,6 +138,15 @@
       },
       "maint_skimmer_needle_wheel_replace_notify": {
         "name": "Sostituire la girante ad aghi e i cuscinetti (notifiche)"
+      },
+      "doser_run": {
+        "name": "Dosaggio canale {channel}"
+      },
+      "doser_timer": {
+        "name": "Programma canale {channel}"
+      },
+      "calibration": {
+        "name": "Calibrazione"
       }
     },
     "select": {
@@ -154,6 +181,16 @@
           "unknown": "Non definito",
           "return": "Pompa di risalita",
           "skimmer": "Pompa dello schiumatoio"
+        }
+      },
+      "calibration_channel": {
+        "name": "Canale di calibrazione",
+        "state": {
+          "channel_1": "Canale 1",
+          "channel_2": "Canale 2",
+          "channel_3": "Canale 3",
+          "channel_4": "Canale 4",
+          "channel_5": "Canale 5"
         }
       }
     },
@@ -208,6 +245,12 @@
       },
       "maint_skimmer_needle_wheel_replace_interval_months": {
         "name": "Sostituire la girante ad aghi e i cuscinetti (mesi)"
+      },
+      "doser_interval": {
+        "name": "Intervallo canale {channel}"
+      },
+      "calibration_amount": {
+        "name": "Quantità di calibrazione"
       }
     },
     "binary_sensor": {
@@ -231,12 +274,21 @@
       },
       "fault_uart": {
         "name": "UART communication fault"
+      },
+      "open_circuit": {
+        "name": "Circuito aperto"
       }
     },
     "sensor": {
       "schedule": {
         "name": "Programmazione",
         "unit_of_measurement": "fasce"
+      },
+      "doser_schedule": {
+        "name": "Programma di dosaggio canale {channel}"
+      },
+      "calibration_time": {
+        "name": "Tempo di calibrazione"
       }
     }
   },
@@ -256,6 +308,20 @@
         "slots": {
           "name": "Fasce",
           "description": "Elenco di fasce (48 al massimo), ciascuna con start ed end (HH:MM o minuti dalla mezzanotte), mode e value. Un elenco vuoto cancella il programma. Le fasce non devono sovrapporsi né superare la mezzanotte."
+        }
+      }
+    },
+    "set_doser_schedule": {
+      "name": "Imposta programma di dosaggio",
+      "description": "Sostituisce l'intera tabella delle dosi di un canale della Reefdoser. La pompa la segue solo finché l'interruttore di programma del canale è attivo.",
+      "fields": {
+        "entity_id": {
+          "name": "Sensore del programma di dosaggio",
+          "description": "Sensore/i del programma di dosaggio dei canali da programmare."
+        },
+        "doses": {
+          "name": "Dosi",
+          "description": "Elenco delle dosi (al massimo 24), ciascuna con time (HH:MM o minuti dalla mezzanotte) e amount_ml (ml interi). Un elenco vuoto cancella il programma. Due dosi non possono avere lo stesso minuto."
         }
       }
     }

@@ -33,6 +33,24 @@
       "entry_not_found": "Integratie-invoer niet gevonden."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aqua Medic — Opties",
+        "data": {
+          "scan_interval": "Verversingsinterval (seconden)",
+          "local_hosts": "Adressen van de pompen op het lokale netwerk"
+        },
+        "data_description": {
+          "scan_interval": "Hoe vaak de status van de apparaten wordt opgevraagd (5–300 s).",
+          "local_hosts": "IP-adres van elke pomp die bereikbaar is op uw netwerk, gescheiden door komma's (optioneel). Uitlezen en de belangrijkste bedieningen gaan dan rechtstreeks naar de pomp; de cloud dient als terugval."
+        }
+      }
+    },
+    "error": {
+      "invalid_host": "Ongeldig adres. Gebruik IP-adressen of hostnamen gescheiden door komma's."
+    }
+  },
   "entity": {
     "button": {
       "refresh": {
@@ -120,6 +138,15 @@
       },
       "maint_skimmer_needle_wheel_replace_notify": {
         "name": "Naaldrotor en lagers vervangen (meldingen)"
+      },
+      "doser_run": {
+        "name": "Kanaal {channel} dosering"
+      },
+      "doser_timer": {
+        "name": "Kanaal {channel} schema"
+      },
+      "calibration": {
+        "name": "Kalibratie"
       }
     },
     "select": {
@@ -154,6 +181,16 @@
           "unknown": "Niet ingesteld",
           "return": "Opvoerpomp",
           "skimmer": "Skimmerpomp"
+        }
+      },
+      "calibration_channel": {
+        "name": "Kalibratiekanaal",
+        "state": {
+          "channel_1": "Kanaal 1",
+          "channel_2": "Kanaal 2",
+          "channel_3": "Kanaal 3",
+          "channel_4": "Kanaal 4",
+          "channel_5": "Kanaal 5"
         }
       }
     },
@@ -208,6 +245,12 @@
       },
       "maint_skimmer_needle_wheel_replace_interval_months": {
         "name": "Naaldrotor en lagers vervangen (maanden)"
+      },
+      "doser_interval": {
+        "name": "Kanaal {channel} interval"
+      },
+      "calibration_amount": {
+        "name": "Kalibratiehoeveelheid"
       }
     },
     "binary_sensor": {
@@ -231,12 +274,21 @@
       },
       "fault_uart": {
         "name": "UART communication fault"
+      },
+      "open_circuit": {
+        "name": "Open circuit"
       }
     },
     "sensor": {
       "schedule": {
         "name": "Schema",
         "unit_of_measurement": "tijdvakken"
+      },
+      "doser_schedule": {
+        "name": "Kanaal {channel} doseerprogramma"
+      },
+      "calibration_time": {
+        "name": "Kalibratietijd"
       }
     }
   },
@@ -256,6 +308,20 @@
         "slots": {
           "name": "Tijdvakken",
           "description": "Lijst met tijdvakken (maximaal 48), elk met start en end (HH:MM of minuten sinds middernacht), mode en value. Een lege lijst wist het programma. Tijdvakken mogen elkaar niet overlappen en niet over middernacht lopen."
+        }
+      }
+    },
+    "set_doser_schedule": {
+      "name": "Doseerschema instellen",
+      "description": "Vervangt de volledige dosistabel van een Reefdoser-kanaal. De pomp volgt het alleen zolang de schemaschakelaar van het kanaal aan staat.",
+      "fields": {
+        "entity_id": {
+          "name": "Doseerschema-sensor",
+          "description": "Doseerschema-sensor(en) van de te programmeren kanalen."
+        },
+        "doses": {
+          "name": "Doseringen",
+          "description": "Lijst met doseringen (maximaal 24), elk met time (HH:MM of minuten sinds middernacht) en amount_ml (hele ml). Een lege lijst wist het programma. Twee doseringen mogen niet in dezelfde minuut vallen."
         }
       }
     }
