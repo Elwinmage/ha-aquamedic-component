@@ -5,21 +5,11 @@
   "interface": "bond0",
   "port": 8080,
   "devices": [
-    {
-      "type": "smartdrift",
-      "count": 2
-    },
-    {
-      "type": "dc_runner",
-      "count": 1
-    },
-    {
-      "type": "dc_runner_return",
-      "count": 1
-    },
-    {
-      "type": "dc_skimmer",
-      "count": 1
-    }
+    { "type": "smartdrift", "count": 2 },
+    { "type": "dc_runner", "count": 1 },
+    { "type": "dc_runner_return", "count": 1 },
+    { "type": "dc_skimmer", "count": 1 },
+    { "type": "reefdoser", "count": 1 },
+    { "type": "reefdoser3", "count": 1 }
   ]
 }

@@ -423,7 +423,7 @@ A Gizwits cloud simulator (`scripts/gizwits_simulator.py`) lets you test the int
 | `virtual_ip` | IP the simulator binds to (`127.0.0.1` skips virtual-IP setup) |
 | `interface` | Network interface for the virtual IP (optional; if omitted, the default-route interface is auto-detected, falling back to `eth0`; can be overridden with `-i/--interface`) |
 | `port` | Listening port (default `8080`) |
-| `devices` | List of `{ "type": ..., "count": N }`; available types: `smartdrift`, `dc_runner` (legacy speculative variant), `dc_runner_return` (DC Runner series return pump), `dc_skimmer` (DC Runner series skimmer pump — same firmware as `dc_runner_return`) |
+| `devices` | List of `{ "type": ..., "count": N }`; available types: `smartdrift`, `dc_runner` (legacy speculative variant), `dc_runner_return` (DC Runner series return pump), `dc_skimmer` (DC Runner series skimmer pump — same firmware as `dc_runner_return`), `reefdoser` (Reefdoser EVO 5 dosing pump, schema from a real capture), `reefdoser3` (Reefdoser EVO 3, **assumed** 3-channel variant with a made-up product key, to exercise the channel-count detection) |
 
 Run it with `sudo python3 scripts/gizwits_simulator.py` (root is required to add the virtual IP).
 

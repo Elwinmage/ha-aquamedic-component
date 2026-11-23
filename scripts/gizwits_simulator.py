@@ -28,7 +28,9 @@ Config format (gizwits_sim_config.json):
         "devices": [
             {"type": "smartdrift", "count": 2},
             {"type": "dc_runner",  "count": 1},
-            {"type": "dc_skimmer", "count": 1}
+            {"type": "dc_skimmer", "count": 1},
+            {"type": "reefdoser",  "count": 1},
+            {"type": "reefdoser3", "count": 1}
         ]
     }
 
@@ -42,6 +44,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -71,6 +74,13 @@ DC_RUNNER_LEGACY_PRODUCT_KEY = "8879684725d14066922374e50889f893"
 DC_RUNNER_PRODUCT_KEY = DC_RUNNER_LEGACY_PRODUCT_KEY
 DC_SKIMMER_PRODUCT_KEY = DC_RUNNER_SERIES_PRODUCT_KEY
 
+# Reefdoser EVO 5 dosing pump (captured from a real account).
+REEFDOSER_EVO5_PRODUCT_KEY = "0c50e51476964bc18bf8efd9a7b5fc87"
+# Reefdoser EVO 3: ASSUMED. The real product key has not been captured yet, so
+# this is a made-up key. The integration must recognise the pump from its
+# CH<n>SWTime tables alone, which is exactly what this simulated model checks.
+REEFDOSER_EVO3_SIM_PRODUCT_KEY = "ee03ee03ee03ee03ee03ee03ee03ee03"
+
 PRODUCT_KEYS: dict[str, str] = {
     "smartdrift": SMARTDRIFT_PRODUCT_KEY,
     # dc_runner keeps its speculative legacy key so old configs behave as before.
@@ -79,6 +89,8 @@ PRODUCT_KEYS: dict[str, str] = {
     # series firmware with the skimmer — same product_key, same datapoint schema.
     "dc_runner_return": DC_RUNNER_SERIES_PRODUCT_KEY,
     "dc_skimmer": DC_RUNNER_SERIES_PRODUCT_KEY,
+    "reefdoser": REEFDOSER_EVO5_PRODUCT_KEY,
+    "reefdoser3": REEFDOSER_EVO3_SIM_PRODUCT_KEY,
 }
 
 PRODUCT_NAMES: dict[str, str] = {
@@ -86,6 +98,8 @@ PRODUCT_NAMES: dict[str, str] = {
     "dc_runner": "DC_Runner",
     "dc_runner_return": "DC_Runner",
     "dc_skimmer": "DC_Runner",
+    "reefdoser": "Reef_Doser5",
+    "reefdoser3": "Reef_Doser3",
 }
 
 # ── Time-slot scheduler ───────────────────────────────────────────────────────
@@ -171,6 +185,123 @@ def _default_attrs_dc_skimmer() -> dict[str, Any]:
     }
 
 
+# ── Reefdoser dosing pump ─────────────────────────────────────────────────────
+# Datapoint schema captured from a real EVO 5 (see devices_datapoints/). The EVO 3
+# is the same family with 3 channels; its schema is derived from the EVO 5 one
+# by dropping channels 4 and 5 (assumed layout, not verified on hardware).
+REEFDOSER_CAPTURE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "devices_datapoints",
+    f"Reef_Doser5_{REEFDOSER_EVO5_PRODUCT_KEY}.json",
+)
+REEFDOSER_SLOT_COUNT = 24
+REEFDOSER_SLOT_LEN = 4
+REEFDOSER_TABLE_LEN = REEFDOSER_SLOT_COUNT * REEFDOSER_SLOT_LEN
+
+
+def _dose_table(doses: list[tuple[int, int, int]]) -> str:
+    """Return a CH<n>SWTime hex value: 24 slots of hour, minute, uint16 ml."""
+    raw = bytearray(REEFDOSER_TABLE_LEN)
+    for slot, (hour, minute, amount_ml) in enumerate(doses[:REEFDOSER_SLOT_COUNT]):
+        raw[slot * 4 : slot * 4 + 4] = bytes(
+            [hour, minute, amount_ml >> 8, amount_ml & 0xFF]
+        )
+    return raw.hex()
+
+
+def _default_attrs_reefdoser(channels: int = 5) -> dict[str, Any]:
+    """Initial attribute state for a Reefdoser (EVO 5 by default)."""
+    attrs: dict[str, Any] = {"switch": 1}
+    for ch in range(1, channels + 1):
+        attrs[f"channe{ch}"] = 0
+    for ch in range(1, channels + 1):
+        attrs[f"Timer{ch}ON"] = 1 if ch == 1 else 0
+    attrs.update({"CALSW": 0, "CALSet": 0})
+    for ch in range(1, channels + 1):
+        attrs[f"IntervalT{ch}"] = 0
+    attrs["Calib1"] = 50
+    for ch in range(1, channels + 1):
+        # Channel 1 carries a small demo program, the others are empty.
+        doses = [(8, 0, 5), (20, 0, 5)] if ch == 1 else []
+        attrs[f"CH{ch}SWTime"] = _dose_table(doses)
+    attrs.update(
+        {
+            "YMDData": "00000000",
+            "HMSData": "00000000",
+            "time1": 60,
+            "OpenCircuit": 0,
+            "Fault_UART": 0,
+        }
+    )
+    return attrs
+
+
+def _default_attrs_reefdoser3() -> dict[str, Any]:
+    """Initial attribute state for the (assumed) 3-channel Reefdoser EVO 3."""
+    return _default_attrs_reefdoser(3)
+
+
+def _datapoints_reefdoser(channels: int = 5) -> dict:
+    """Gizwits datapoint schema for a Reefdoser, loaded from the real capture."""
+    with open(REEFDOSER_CAPTURE, encoding="utf-8") as handle:
+        schema = json.load(handle)["datapoints"]
+    if channels >= 5:
+        return schema
+    return _reduce_reefdoser_schema(schema, channels)
+
+
+_REEFDOSER_WORD_BITS = frozenset(
+    ["switch", "CALSW", "CALSet"]
+    + [f"channe{n}" for n in range(1, 6)]
+    + [f"Timer{n}ON" for n in range(1, 6)]
+)
+
+
+def _reduce_reefdoser_schema(schema: dict, channels: int) -> dict:
+    """Derive a smaller model's schema by dropping the extra channels.
+
+    The remaining datapoints are re-numbered and moved so the status payload
+    stays contiguous, as it would on a real smaller pump.
+    """
+    suffix = re.compile(r"^(?:channe|Timer|IntervalT|CH)(\d)(?:ON|SWTime)?$")
+    entities = []
+    for entity in schema["entities"]:
+        kept = []
+        for attr in entity["attrs"]:
+            match = suffix.match(attr["name"])
+            if match and int(match.group(1)) > channels:
+                continue
+            item = dict(attr)
+            if item["name"] == "CALSet":
+                item["enum"] = list(item["enum"])[:channels]
+            kept.append(item)
+        # Re-assign ids and byte offsets in order (bit fields share a word).
+        offset = 0
+        bit = 0
+        for new_id, attr in enumerate(kept):
+            attr["id"] = new_id
+            pos = dict(attr["position"])
+            if pos["unit"] == "bit" and attr["name"] in _REEFDOSER_WORD_BITS:
+                pos["byte_offset"] = 0
+                pos["bit_offset"] = bit
+                bit += pos["len"]
+                offset = 2
+            else:
+                pos["byte_offset"] = offset
+                offset += pos["len"] if pos["unit"] == "byte" else 1
+            attr["position"] = pos
+        entities.append({**entity, "attrs": kept})
+    return {
+        **schema,
+        "entities": entities,
+        "product_key": REEFDOSER_EVO3_SIM_PRODUCT_KEY,
+    }
+
+
+def _datapoints_reefdoser3() -> dict:
+    return _datapoints_reefdoser(3)
+
+
 DEFAULT_ATTRS: dict[str, Any] = {
     "smartdrift": _default_attrs_smartdrift,
     "dc_runner": _default_attrs_dc_runner,
@@ -179,6 +310,8 @@ DEFAULT_ATTRS: dict[str, Any] = {
     # for a return pump) are cosmetic and can be overridden per instance.
     "dc_runner_return": _default_attrs_dc_skimmer,
     "dc_skimmer": _default_attrs_dc_skimmer,
+    "reefdoser": _default_attrs_reefdoser,
+    "reefdoser3": _default_attrs_reefdoser3,
 }
 
 # ── Datapoint schemas ─────────────────────────────────────────────────────────
@@ -498,6 +631,8 @@ DATAPOINTS: dict[str, Any] = {
     SMARTDRIFT_PRODUCT_KEY: _datapoints_smartdrift,
     DC_RUNNER_PRODUCT_KEY: _datapoints_dc_runner,
     DC_SKIMMER_PRODUCT_KEY: _datapoints_dc_skimmer,
+    REEFDOSER_EVO5_PRODUCT_KEY: _datapoints_reefdoser,
+    REEFDOSER_EVO3_SIM_PRODUCT_KEY: _datapoints_reefdoser3,
 }
 
 # ── Virtual device registry ───────────────────────────────────────────────────
